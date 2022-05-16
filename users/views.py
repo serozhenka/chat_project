@@ -1,7 +1,21 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.decorators import login_required
 from django.urls.exceptions import NoReverseMatch
-from .forms import RegisterForm
+from .forms import RegisterForm, LoginForm
+
+def redirect_next_url(request):
+    # function returning a redirect to next url
+    # from form's post request which is a hidden input
+
+    if request.method == "POST":
+        destination = request.POST.get('next', 'home')
+        try:
+            return redirect(destination)
+        except NoReverseMatch:
+            pass
+
+    return redirect('home')
 
 def register_page(request):
     if request.user.is_authenticated:
@@ -13,17 +27,40 @@ def register_page(request):
         context['next_url'] = request.GET.get('next', None)
     elif request.method == "POST":
         form = RegisterForm(request.POST)
-        destination = request.POST.get('next', 'home')
         if form.is_valid():
             user = form.save()
             login(request, user)
-            try:
-                return redirect(destination)
-            except NoReverseMatch:
-                return redirect('home')
+            return redirect_next_url(request)
         else:
             context['registration_form'] = form
 
     return render(request, 'users/register.html', context=context)
 
+
+def login_page(request):
+    if request.user.is_authenticated:
+        return redirect('home')
+
+    context = {}
+    if request.method == "GET":
+        context['next_url'] = request.GET.get('next', None)
+    elif request.method == "POST":
+        form = LoginForm(request.POST)
+
+        if form.is_valid():
+            cleaned_form = form.cleaned_data
+            user = authenticate(email=cleaned_form['email'], password=cleaned_form['password'])
+            if user:
+                login(request, user)
+                return redirect_next_url(request)
+
+        context['login_form'] = LoginForm(request.POST)
+
+    return render(request, 'users/login.html', context=context)
+
+
+@login_required(login_url='login')
+def logout_page(request):
+    logout(request)
+    return redirect('home')
 

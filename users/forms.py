@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth import authenticate
 from .models import Account
 
 
@@ -29,4 +30,17 @@ class RegisterForm(UserCreationForm):
 
         raise forms.ValidationError('User with this username already exists')
 
+
+class LoginForm(forms.Form):
+
+    email = forms.EmailField(widget=forms.EmailInput)
+    password = forms.CharField(label='password', widget=forms.PasswordInput)
+
+    def clean(self):
+        if self.is_valid():
+            email = self.cleaned_data.get('email')
+            password = self.cleaned_data.get('password')
+
+            if not authenticate(email=email, password=password):
+                raise forms.ValidationError('Invalid credentials')
 
