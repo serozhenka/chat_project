@@ -2,7 +2,9 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.urls.exceptions import NoReverseMatch
+
 from .forms import RegisterForm, LoginForm
+from .models import Account
 
 def redirect_next_url(request):
     # function returning a redirect to next url
@@ -63,4 +65,26 @@ def login_page(request):
 def logout_page(request):
     logout(request)
     return redirect('home')
+
+
+def account_page(request, user_id):
+    """
+    - Logic here is kind of tricky
+        is_self
+        is_friend
+            -1: NO_REQUEST_SENT
+            0: THEM_SENT_TO_YOU
+            1: YOU_SENT_TO_THEM
+    """
+
+    context = {}
+
+    if request.method == "GET":
+        try:
+            owner = Account.objects.get(id=user_id)
+        except Account.DoesNotExist:
+            return redirect('home')
+
+        return render(request, 'users/account.html', context={'owner': owner})
+
 
