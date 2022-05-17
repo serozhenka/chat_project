@@ -6,7 +6,7 @@
 		<h5 class="me-3 font-weight-normal justify-content-start">
 			<a class="text-decoration-none p-2 text-dark" href="{% url 'home' %}">Home</a>
 		</h5>
-		<form class="search-bar justify-content-start flex-grow-1" style="max-width: 500px">
+		<form class="search-bar justify-content-start flex-grow-1" style="max-width: 500px" onsubmit="return executeQuery();">
 			<input type="text" class="form-control" name="q" id="id_q_large" placeholder="Search...">
 		</form>
 
@@ -56,7 +56,7 @@
 		<h5 class="font-weight-normal">
 		<a class="text-decoration-none p-2 text-dark" href="{% url 'home' %}">Home</a>
 		</h5>
-		<form class="search-bar justify-content-start flex-grow-1" onsubmit="return executeQuery();" style="width: 500px">
+		<form class="search-bar justify-content-start flex-grow-1" onsubmit="return executeQuery();" style="max-width: 500px; width:90%">
 			<input type="text" class="form-control" name="q" id="id_q_small" placeholder="Search...">
 		</form>
 		<div class="d-flex flex-row-reverse">
@@ -82,3 +82,18 @@
 	</div>
 
 </div>
+
+<script type="text/javascript">
+
+    function executeQuery() {
+      let query = document.getElementById('id_q_small').value
+      if (query === "") {
+        query = document.getElementById('id_q_large').value
+      }
+
+      console.log("{% url 'search' %}?q=" + query)
+      window.location.href = "{% url 'search' %}?q=" + query
+
+      return false;
+    }
+</script>

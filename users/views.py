@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.urls.exceptions import NoReverseMatch
 
 from .forms import RegisterForm, LoginForm
@@ -86,5 +87,24 @@ def account_page(request, user_id):
             return redirect('home')
 
         return render(request, 'users/account.html', context={'owner': owner})
+
+def account_search_view(request):
+    context = {}
+
+    if request.method == "GET":
+        search_query = request.GET.get('q', None)
+        if search_query:
+            search_results = Account.objects.filter(
+                Q(email__icontains=search_query) |
+                Q(username__icontains=search_query)
+            )
+
+            accounts = []
+            for account in search_results:
+                accounts.append((account, False))
+
+            context['accounts'] = accounts
+
+    return render(request, 'users/account_results.html', context=context)
 
 

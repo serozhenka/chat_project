@@ -37,6 +37,7 @@ urlpatterns = [
         name='password_reset_complete'),
 
     path('accounts/', include('users.urls')),
+    path('search/', auth_views.account_search_view, name='search'),
 ]
 
 if settings.DEBUG:
