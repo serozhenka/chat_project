@@ -171,3 +171,5 @@ AUTH_USER_MODEL = 'users.Account'
 #     'django.contrib.auth.backends.AllowAllUsersModelBackend',
 #     'users.backends.CaseInsensitiveModelBackend',
 # ]
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 10

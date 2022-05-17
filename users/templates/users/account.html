@@ -27,7 +27,7 @@
 
 		  		<!-- If Auth user is viewing their own profile -->
 		  		{% if request.user == owner %}
-                    <a  class="mt-4 btn btn-primary" href="{#% url 'account:edit' user_id=id %#}">Update</a>
+                    <a  class="mt-4 btn btn-primary" href="{% url 'account:edit' user_id=owner.id %}">Update</a>
                     <div class="d-flex flex-column mt-4">
                         <a class="m-auto" href="{% url 'password_change' %}">Change password</a>
                     </div>

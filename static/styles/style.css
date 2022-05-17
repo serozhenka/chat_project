@@ -225,6 +225,11 @@ body {
     font-weight: 500;
 }
 
+.profile-card {
+    min-width: 400px;
+}
+
+
 /* end of account */
 
 /*user search*/
@@ -265,3 +270,36 @@ body {
 }
 
 /*end of user search*/
+
+/* account edit */
+
+.image-container{
+    max-width: 250px;
+    width: auto;
+    height: auto;
+    position: relative;
+}
+.field-heading{
+    color: #737373;
+}
+#id_confirm{
+    color: green;
+}
+#id_confirm:hover {
+    opacity: 0.3;
+}
+#id_cancel:hover {
+    opacity: 0.3;
+}
+#id_cancel{
+    color: red;
+}
+.material-icons{
+    font-size: 30px;
+}
+.material-icons:hover{
+    cursor: pointer;
+}
+
+/* end of account edit */
+

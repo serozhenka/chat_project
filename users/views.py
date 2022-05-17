@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.urls.exceptions import NoReverseMatch
 
-from .forms import RegisterForm, LoginForm
+from .forms import RegisterForm, LoginForm, AccountUpdateForm
 from .models import Account
 
 def redirect_next_url(request):
@@ -78,8 +78,6 @@ def account_page(request, user_id):
             1: YOU_SENT_TO_THEM
     """
 
-    context = {}
-
     if request.method == "GET":
         try:
             owner = Account.objects.get(id=user_id)
@@ -108,3 +106,26 @@ def account_search_view(request):
     return render(request, 'users/account_results.html', context=context)
 
 
+@login_required(login_url='login')
+def account_edit(request, user_id):
+    context = {}
+    try:
+        owner = Account.objects.get(id=user_id)
+    except Account.DoesNotExist:
+        return redirect('home')
+
+    if owner != request.user:
+        return redirect('home')
+
+    if request.method == 'GET':
+        form = AccountUpdateForm(instance=request.user)
+
+    elif request.method == 'POST':
+        form = AccountUpdateForm(request.POST, request.FILES, instance=request.user, request=request)
+        if form.is_valid():
+            form.save()
+            return redirect('account:view', user_id=user_id)
+
+    context['form'] = form
+
+    return render(request, 'users/account_edit.html', context=context)
