@@ -122,7 +122,10 @@ def account_edit(request, user_id):
 
     elif request.method == 'POST':
         form = AccountUpdateForm(request.POST, request.FILES, instance=request.user, request=request)
+        print(form)
+        print(request.POST)
         if form.is_valid():
+            owner.image.delete(save=True)  # delete old image
             form.save()
             return redirect('account:view', user_id=user_id)
 

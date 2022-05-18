@@ -9,18 +9,19 @@
 		<div class="card profile-card">
 		  <div class="card-body">
 		  	<div class="d-flex flex-column justify-content-center p-4 align-items-center">
-		  		<div class="mb-2" id="id_image_crop_confirm">
-		  			<i class="bi bi-x-circle-fill text-danger"></i>
-		  			<i class="bi bi-check2 text-success"></i>
+		  		<div class="mb-2 d-none justify-content-between w-100" id="id_image_crop_confirm" style="max-width: 250px">
+		  			<span id="id_cancel"><i class="bi bi-x-circle-fill text-danger fs-3"></i></span>
+		  			<span id="id_confirm"><i class="bi bi-check2 text-success fs-3"></i></span>
 		  		</div>
-		  		<div class="image-container" id="id_image_container">
-	  				<img class="border border-dark rounded-circle img-fluid mx-auto" id="id_profile_image_display" src="{{form.initial.image.url}}" alt="codingwithmitch logo">
+		  		<div class="image-container" id="id_image_container" style="position: relative">
+	  				<img class="border border-dark rounded-circle img-fluid mx-auto" id="id_profile_image" src="{{form.initial.image.url}}" alt="codingwithmitch logo">
 					<div class="middle" id="id_middle_container">
-						<div class="text" id="id_text">Edit</div>
+						Edit
 					</div>
 		  		</div>
-		  		<form class="form-signin" method="post" enctype="multipart/form-data">{% csrf_token %}
-		  			<input class="d-none" type="file" name="profile_image" id="id_profile_image" onchange="readURL(this)">
+		  		<form class="form-signin" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+		  			<input class="d-none" type="file" name="image" id="id_profile_image_file_selector" onchange="readURL(this)">
 
 			  		<h6 class="mt-4 field-heading">Email</h6>
 			  		<input type="email" name="email" id="id_input_email" class="form-control" placeholder="Email address" required autofocus value={{form.initial.email}}>
@@ -63,6 +64,82 @@
 	</div>
 </div>
 
+<script type="text/javascript">
 
+    let editBtn = document.getElementById('id_middle_container')
+    let profileImage = document.getElementById('id_profile_image')
+    let imageContainer = document.getElementById('id_image_container')
+    let confirmBtnContainer = document.getElementById('id_image_crop_confirm')
+
+    function readURL(input) {
+      console.log(input.files)
+      if(input.files && input.files[0]) {
+        let reader = new FileReader()
+
+        reader.onload = function (e) {
+          imageContainerMouseOut(this)
+          disableImageOverlay()
+          profileImage.src = e.target.result
+        }
+
+        reader.readAsDataURL(input.files[0])
+      }
+    }
+
+    let imageContainerMouseOver = function (e) {
+      profileImage.style.opacity = '0.3'
+      editBtn.style.opacity = '1'
+    }
+    let imageContainerMouseOut = function (e) {
+      profileImage.style.opacity = '1'
+      editBtn.style.opacity = '0'
+    }
+
+    enableImageOverlay()
+
+    function enableImageOverlay() {
+        editBtn.style.cursor = 'pointer'
+        editBtn.style.transition = '.5s ease'
+
+        profileImage.style.opacity = '1'
+        profileImage.style.transition = '.5s ease'
+        profileImage.style.backfaceVisibility = 'hidden'
+        profileImage.style.cursor = 'pointer'
+
+        imageContainer.addEventListener('mouseover', imageContainerMouseOver)
+        imageContainer.addEventListener('mouseout', imageContainerMouseOut)
+
+        imageContainer.addEventListener('click', function(e) {
+          document.getElementById('id_profile_image_file_selector').click()
+        })
+
+    }
+
+    function disableImageOverlay() {
+
+        imageContainer.removeEventListener('mouseover', imageContainerMouseOver)
+        imageContainer.removeEventListener('mouseout', imageContainerMouseOut)
+
+        profileImage.style.cursor = 'default'
+
+        imageContainer.removeEventListener('click', (e) => {})
+
+        confirmBtnContainer.classList.remove('d-none')
+        confirmBtnContainer.classList.add('d-flex')
+
+        let confirm = document.getElementById('id_confirm')
+        let cancel = document.getElementById('id_cancel')
+
+        confirm.addEventListener('click', function(e) {
+          enableImageOverlay()
+        })
+
+        cancel.addEventListener('click', function(e) {
+          console.log('clicked')
+          window.location.reload()
+        })
+    }
+
+</script>
 
 {% endblock content %}

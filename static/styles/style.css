@@ -273,12 +273,6 @@ body {
 
 /* account edit */
 
-.image-container{
-    max-width: 250px;
-    width: auto;
-    height: auto;
-    position: relative;
-}
 .field-heading{
     color: #737373;
 }
@@ -299,6 +293,18 @@ body {
 }
 .material-icons:hover{
     cursor: pointer;
+}
+
+.middle {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    font-size: 16px;
+    padding: 10px 25px;
+    background-color: #0066ff;
+    color: #eee;
 }
 
 /* end of account edit */
