@@ -1,11 +1,24 @@
+import os
+import cv2
+import json
+import base64
+import requests
+
+from django.http import HttpResponse
+from django.core import files
+from django.conf import settings
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.urls.exceptions import NoReverseMatch
+from django.core.files.storage import default_storage
+from django.core.files.storage import FileSystemStorage
 
 from .forms import RegisterForm, LoginForm, AccountUpdateForm
 from .models import Account
+
+TEMP_PROFILE_IMAGE_NAME = "temp_profile_image.png"
 
 def redirect_next_url(request):
     # function returning a redirect to next url
@@ -122,13 +135,87 @@ def account_edit(request, user_id):
 
     elif request.method == 'POST':
         form = AccountUpdateForm(request.POST, request.FILES, instance=request.user, request=request)
-        print(form)
-        print(request.POST)
         if form.is_valid():
-            owner.image.delete(save=True)  # delete old image
+            # owner.image.delete(save=True)  # delete old image
             form.save()
             return redirect('account:view', user_id=user_id)
 
     context['form'] = form
+    context['DATA_UPLOAD_MAX_MEMORY_SIZE'] = settings.DATA_UPLOAD_MAX_MEMORY_SIZE
 
     return render(request, 'users/account_edit.html', context=context)
+
+
+@login_required(login_url='login')
+def crop_image(request, user_id):
+    payload = {}
+
+    try:
+        user = Account.objects.get(id=user_id)
+    except Account.DoesNotExist:
+        return redirect('home')
+
+    if user != request.user:
+        return redirect('home')
+
+    if request.method == "POST" and user.is_authenticated:
+        try:
+            imageString = request.POST.get('image')
+            url = save_temp_profile_image_from_base64String(imageString, user)
+            img = cv2.imread(url)
+
+            cropX = int(float(str(request.POST.get("cropX"))))
+            cropY = int(float(str(request.POST.get("cropY"))))
+            cropWidth = int(float(str(request.POST.get("cropWidth"))))
+            cropHeight = int(float(str(request.POST.get("cropHeight"))))
+
+            cropX = 0 if cropX < 0 else cropX
+            cropY = 0 if cropY < 0 else cropY
+
+            cropped_image = img[cropY:cropY + cropHeight, cropX:cropX + cropWidth]
+            cv2.imwrite(url, cropped_image)
+            user.image.delete()
+            user.image.save("profile_image.png", files.File(open(url, 'rb')))
+            user.save()
+
+            payload['result'] = 'success'
+            payload['cropped_image_url'] = user.image.url
+
+            os.remove(url)
+            if os.path.exists(f"{settings.TEMP}/{str(user.id)}"):
+                os.rmdir(f"{settings.TEMP}/{str(user.id)}")
+
+        except Exception as e:
+            print(e)
+            payload['result'] = 'error'
+            payload['exception'] = str(e)
+
+        return HttpResponse(json.dumps(payload), content_type='application/json')
+
+
+def save_temp_profile_image_from_base64String(imageString, user):
+    INCORRECT_PADDING_EXCEPTION = "Incorrect padding"
+
+    try:
+        if not os.path.exists(settings.TEMP):
+            os.mkdir(settings.TEMP)
+
+        if not os.path.exists(f"{settings.TEMP}/{str(user.id)}"):
+            os.mkdir(f"{settings.TEMP}/{str(user.id)}")
+
+        url = os.path.join(f"{settings.TEMP}/{str(user.id)}", TEMP_PROFILE_IMAGE_NAME)
+        storage = FileSystemStorage(location=url)
+        image = base64.b64decode(imageString)
+
+        with storage.open("", 'wb+') as destination:
+            destination.write(image)
+            destination.close()
+
+        return url
+
+    except Exception as e:
+        if str(e) == INCORRECT_PADDING_EXCEPTION:
+            imageString += "=" * ((4 - len(imageString) % 4) % 4)
+            return save_temp_profile_image_from_base64String(imageString, user)
+
+    return None

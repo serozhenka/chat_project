@@ -79,7 +79,7 @@ class AccountUpdateForm(forms.ModelForm):
 
         account.username = self.cleaned_data['username']
         account.email = self.cleaned_data['email']
-        account.image = self.cleaned_data['image']
+        # account.image = self.cleaned_data['image']
         account.hide_email = self.cleaned_data['hide_email']
 
         if commit:

@@ -66,33 +66,115 @@
 
 <script type="text/javascript">
 
+    let cropper, imageFile, base64ImageString, cropX, cropY, cropWidth, cropHeight;
+
     let editBtn = document.getElementById('id_middle_container')
     let profileImage = document.getElementById('id_profile_image')
     let imageContainer = document.getElementById('id_image_container')
     let confirmBtnContainer = document.getElementById('id_image_crop_confirm')
 
     function readURL(input) {
-      console.log(input.files)
       if(input.files && input.files[0]) {
         let reader = new FileReader()
 
         reader.onload = function (e) {
           imageContainerMouseOut(this)
           disableImageOverlay()
-          profileImage.src = e.target.result
+          let image = e.target.result
+          profileImage.src = image
+
+          cropper = new Cropper(profileImage, {
+            aspectRatio: 1 / 1,
+            crop(event) {
+              console.log("crop start")
+              console.log("x: " + event.detail.x)
+              console.log("y: " + event.detail.y)
+              console.log("width: " + event.detail.width)
+              console.log("height: " + event.detail.height)
+
+              setImageCropProperties(
+                image,
+                event.detail.x, event.detail.y,
+                event.detail.width, event.detail.height
+              )
+
+            }
+          })
         }
 
         reader.readAsDataURL(input.files[0])
       }
     }
 
+    function setImageCropProperties(image, x, y, width, height) {
+      [imageFile, cropX, cropY, cropWidth, cropHeight] = [image, x, y, width, height]
+    }
+
+    function isImageSizeValid(image) {
+      let startIndex = image.indexOf('base64,') + 7
+      let base64String = image.substr(startIndex)
+      let decoded = atob(base64String)
+
+      if (decoded.length >= "{{ DATA_UPLOAD_MAX_MEMORY_SIZE }}" ) {
+        return null
+      }
+      return base64String
+    }
+
+    function cropImage(image, x, y, width, height) {
+      base64ImageString = isImageSizeValid(image)
+      if (!base64ImageString) {
+        alert('Image upload size is big. Please choose smaller size image')
+        window.location.reload()
+        return
+      }
+
+        let requestData = {
+            "csrfmiddlewaretoken": "{{ csrf_token }}",
+            "image": base64ImageString,
+            "cropX": cropX,
+            "cropY": cropY,
+            "cropWidth": cropWidth,
+            "cropHeight": cropHeight
+        }
+
+        displayLoadingSpinner(true)
+        $.ajax({
+          type: "POST",
+          dataType: 'json',
+          url: "{% url 'account:crop-image' user_id=request.user.id %}",
+          data: requestData,
+          timeout: 10000,
+          success: function (data) {
+            if (data.result ==="success") {
+                window.location.reload()
+            } else if(data.result === "error") {
+                alert(data.exception)
+                window.location.reload()
+            }
+          },
+          error: function (data) {
+            console.log(data)
+            console.log("error...")
+          },
+          complete: function (data) {
+            displayLoadingSpinner(false)
+          },
+        })
+    }
+
     let imageContainerMouseOver = function (e) {
       profileImage.style.opacity = '0.3'
       editBtn.style.opacity = '1'
     }
+
     let imageContainerMouseOut = function (e) {
       profileImage.style.opacity = '1'
       editBtn.style.opacity = '0'
+    }
+
+    let imageContainerMouseClick = function (e) {
+      document.getElementById('id_profile_image_file_selector').click()
     }
 
     enableImageOverlay()
@@ -108,10 +190,7 @@
 
         imageContainer.addEventListener('mouseover', imageContainerMouseOver)
         imageContainer.addEventListener('mouseout', imageContainerMouseOut)
-
-        imageContainer.addEventListener('click', function(e) {
-          document.getElementById('id_profile_image_file_selector').click()
-        })
+        imageContainer.addEventListener('click', imageContainerMouseClick)
 
     }
 
@@ -119,10 +198,9 @@
 
         imageContainer.removeEventListener('mouseover', imageContainerMouseOver)
         imageContainer.removeEventListener('mouseout', imageContainerMouseOut)
+        imageContainer.removeEventListener('click', imageContainerMouseClick)
 
         profileImage.style.cursor = 'default'
-
-        imageContainer.removeEventListener('click', (e) => {})
 
         confirmBtnContainer.classList.remove('d-none')
         confirmBtnContainer.classList.add('d-flex')
@@ -131,7 +209,8 @@
         let cancel = document.getElementById('id_cancel')
 
         confirm.addEventListener('click', function(e) {
-          enableImageOverlay()
+          {#enableImageOverlay()#}
+          cropImage(imageFile, cropX, cropY, cropWidth, cropHeight)
         })
 
         cancel.addEventListener('click', function(e) {

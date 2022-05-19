@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/3.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
-
+import os
 from pathlib import Path
 
 import django.core.mail.backends.console
@@ -173,3 +173,5 @@ AUTH_USER_MODEL = 'users.Account'
 # ]
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 10
+
+TEMP = os.path.join(BASE_DIR, 'mediafiles/profile_images/temp')
