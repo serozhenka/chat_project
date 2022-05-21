@@ -68,6 +68,27 @@ def decline_friend_request(request, friend_request_id):
         return HttpResponse(json.dumps({'response': 'Not able to process such a request'}), content_type='application/json')
 
 
+def cancel_friend_request(request, receiver_id):
+    payload = {}
+    user = request.user
+
+    if request.method == "POST" and user.is_authenticated:
+        try:
+            receiver = Account.objects.get(id=receiver_id)
+        except Account.DoesNotExist:
+            return HttpResponse(json.dumps({'response': 'Not able to process such a request'}), content_type='application/json')
+
+        try:
+            friend_request = FriendRequest.objects.get(sender=user, receiver=receiver, is_active=True)
+            friend_request.cancel()
+            payload['response'] = 'request canceled'
+            return HttpResponse(json.dumps(payload), content_type='application/json')
+        except FriendRequest.DoesNotExist:
+            pass
+
+        return HttpResponse(json.dumps({'response': 'Not able to process such a request'}), content_type='application/json')
+
+
 def remove_friend(request, friend_id):
     payload = {}
     user = request.user
