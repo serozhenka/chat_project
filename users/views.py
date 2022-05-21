@@ -17,6 +17,9 @@ from django.core.files.storage import FileSystemStorage
 
 from .forms import RegisterForm, LoginForm, AccountUpdateForm
 from .models import Account
+from friends.models import FriendList, FriendRequest
+from friends.utils import get_friend_request_or_false
+from friends.friend_request_statuses import FriendRequestStatus
 
 TEMP_PROFILE_IMAGE_NAME = "temp_profile_image.png"
 
@@ -90,14 +93,45 @@ def account_page(request, user_id):
             0: THEM_SENT_TO_YOU
             1: YOU_SENT_TO_THEM
     """
+    context = {}
 
     if request.method == "GET":
         try:
             owner = Account.objects.get(id=user_id)
+            friend_list = FriendList.objects.get(user=owner)
+            friends = friend_list.friends.all()
+            if friends.filter(pk=request.user.id).exists():
+                is_friend = True
+            else:
+                is_friend = False
+
+                # Request from them to you: FriendRequestStatus.THEM_SENT_TO_YOU
+                if friend_request := get_friend_request_or_false(sender=owner, receiver=request.user):
+                    request_sent = FriendRequestStatus.THEM_SENT_TO_YOU.value
+                    context['pending_friend_request_id'] = friend_request.id
+
+                # Request from you to them: FriendRequestStatus.YOU_SENT_TO_THEM
+                elif friend_request := get_friend_request_or_false(sender=request.user, receiver=owner):
+                    request_sent = FriendRequestStatus.YOU_SENT_TO_THEM.value
+
+                # No friend request hase been sent: FriendRequestStatus.NO_REQUEST_SENT
+                else:
+                    request_sent = FriendRequestStatus.NO_REQUEST_SENT.value
+
         except Account.DoesNotExist:
             return redirect('home')
 
-        return render(request, 'users/account.html', context={'owner': owner})
+        if request.user.is_authenticated:
+            friend_requests = FriendRequest.objects.filter(receiver=request.user, is_active=True)
+            context['friend_requests'] = friend_requests
+
+        context.update({
+            'owner': owner,
+            'friends': friends,
+            'request_sent': request_sent,
+            'is_friend': is_friend,
+        })
+        return render(request, 'users/account.html', context=context)
 
 def account_search_view(request):
     context = {}

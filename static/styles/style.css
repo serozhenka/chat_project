@@ -309,3 +309,25 @@ body {
 
 /* end of account edit */
 
+.profile-link{
+    color: #000;
+}
+.material-icons{
+    font-size: 30px;
+}
+.material-icons:hover{
+    cursor: pointer;
+}
+.confirm-friend-request{
+    color: green;
+}
+.confirm-friend-request:hover {
+    opacity: 0.3;
+}
+.decline-friend-request:hover {
+    opacity: 0.3;
+}
+.decline-friend-request{
+    color: red;
+}
+

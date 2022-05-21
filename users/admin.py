@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
 from .models import Account
 
 class AccountAdmin(admin.ModelAdmin):
@@ -9,5 +10,8 @@ class AccountAdmin(admin.ModelAdmin):
     filter_horizontal = ()
     list_filter = ()
     fieldsets = ()
+
+    class Meta:
+        model = Account
 
 admin.site.register(Account, AccountAdmin)

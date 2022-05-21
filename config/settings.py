@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     # internal apps
     'home.apps.HomeConfig',
     'users.apps.UsersConfig',
+    'friends.apps.FriendsConfig',
 ]
 
 MIDDLEWARE = [
