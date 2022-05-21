@@ -146,9 +146,14 @@ def account_search_view(request):
             )
 
             accounts = []
+            try:
+                auth_user_friend_list = FriendList.objects.get(user=request.user)
+            except FriendList.DoesNotExist:
+                auth_user_friend_list = None
+
             for account in search_results:
-                is_friend = account in FriendList.objects.get(user=request.user).friends.all()
-                accounts.append((account, is_friend))
+                is_friends_or_false = auth_user_friend_list.is_mutual_friends(account) if auth_user_friend_list else False
+                accounts.append((account, is_friends_or_false))
 
             context['accounts'] = accounts
 

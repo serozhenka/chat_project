@@ -12,6 +12,28 @@ def friend_requests(request):
     return render(request, 'friends/friend_requests.html', context={'friend_requests': friend_request_list})
 
 
+@login_required(login_url='login')
+def friend_list(request, user_id):
+    if request.method == "GET":
+        try:
+            current_user = Account.objects.get(id=user_id)
+        except Account.DoesNotExist:
+            return redirect('home')
+
+        friends_list = FriendList.objects.get(user=current_user)
+
+        if not(request.user == current_user or (request.user != current_user and request.user in friends_list.friends.all())):
+            return redirect('home')
+
+        friends = []
+        auth_user_friend_list = FriendList.objects.get(user=request.user)
+
+        for friend in friends_list.friends.all():
+            friends.append((friend, auth_user_friend_list.is_mutual_friends(friend)))
+
+        return render(request, 'friends/friend_list.html', context={'friends': friends})
+
+
 def send_friend_request(request, receiver_id):
     user = request.user
     payload = {}
