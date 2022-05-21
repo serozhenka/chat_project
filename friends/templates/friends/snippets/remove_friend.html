@@ -1,0 +1,28 @@
+<script type="text/javascript">
+
+    function removeFriend(id, uiUpdateFunction) {
+      let url = "{% url 'friend:friend-remove' friend_id=123456789 %}".replace(123456789, id)
+
+      $.ajax({
+        type: "POST",
+        dataType: "json",
+        url: url,
+        data: {"csrfmiddlewaretoken": "{{ csrf_token }}"},
+        timeout: 5000,
+        success: function(data) {
+          if (data.response === "removed") {
+
+          } else if(data.response) {
+            alert(data.response)
+          }
+        },
+        error: function(data) {
+            alert("something went wrong")
+        },
+        complete: function(data) {
+          uiUpdateFunction()
+        },
+      })
+    }
+
+</script>

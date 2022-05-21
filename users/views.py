@@ -102,6 +102,7 @@ def account_page(request, user_id):
             friends = friend_list.friends.all()
             if friends.filter(pk=request.user.id).exists():
                 is_friend = True
+                request_sent = 0
             else:
                 is_friend = False
 
@@ -146,7 +147,8 @@ def account_search_view(request):
 
             accounts = []
             for account in search_results:
-                accounts.append((account, False))
+                is_friend = account in FriendList.objects.get(user=request.user).friends.all()
+                accounts.append((account, is_friend))
 
             context['accounts'] = accounts
 
