@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 import os
 from pathlib import Path
 
+import channels_redis.core
 import django.core.mail.backends.console
 from decouple import config
 
@@ -45,6 +46,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # external apps
+    'channels',
+    'channels_redis',
 
     # internal apps
     'home.apps.HomeConfig',
@@ -84,6 +87,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
 
 
 # Database
@@ -177,3 +181,12 @@ AUTH_USER_MODEL = 'users.Account'
 DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 10
 
 TEMP = os.path.join(BASE_DIR, 'mediafiles/profile_images/temp')
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
