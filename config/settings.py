@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'home.apps.HomeConfig',
     'users.apps.UsersConfig',
     'friends.apps.FriendsConfig',
+    'public_chat.apps.PublicChatConfig',
 ]
 
 MIDDLEWARE = [
