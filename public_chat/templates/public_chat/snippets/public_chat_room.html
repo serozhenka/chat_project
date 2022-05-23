@@ -1,6 +1,5 @@
 {% load static %}
 
-
 {% if debug_mode %}
 PUBLIC CHAT
 {% endif %}
@@ -82,9 +81,7 @@ PUBLIC CHAT
         let public_chat_websocket = new WebSocket(ws_path)
 
         public_chat_websocket.onmessage = function(e) {
-          console.log("incoming message")
           let data = JSON.parse(e.data)
-          console.log(data)
           if (data.msg_type === 0) {
             appendChatMessage(data)
           } else if (data.msg_type === 1) {
@@ -142,10 +139,10 @@ PUBLIC CHAT
     }
 
     function appendChatMessage(data) {
-      createChatMessage(data.message, data.username, data.image, data.user_id)
+      createChatMessage(data.message, data.username, data.image, data.user_id, data.natural_timestamp)
     }
 
-    function createChatMessage(message, username, image, user_id) {
+    function createChatMessage(message, username, image, user_id, timestamp) {
       let user_profile_url = "{% url 'account:view' user_id=123456789 %}".replace(123456789, user_id)
       let chaLog = document.getElementById("id_chat_log")
       let newMessage = `
@@ -159,6 +156,7 @@ PUBLIC CHAT
                     <a href="${user_profile_url}" target="_blank" class="username-href">
                         <span class="username-span">${username}</span>
                     </a>
+                    <span class="d-flex align-items-center timestamp-span">${timestamp}</span>
                 </div>
                 <p class="msg-p">
                     ${message}
