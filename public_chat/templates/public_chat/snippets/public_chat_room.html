@@ -39,6 +39,32 @@ PUBLIC CHAT
 	</div>
 </div>
 
+<!-- Client Error MODAL -->
+
+<button type="button" id="id_trigger_client_error_modal" class="d-none btn btn-primary" data-bs-toggle="modal" data-bs-target="#id_client_error_modal">
+</button>
+<div class="modal fade" id="id_client_error_modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Socket Client Error</h5>
+        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="id_client_error_modal_body">Something went wrong.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="id_client_error_modal_close_btn">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Client Error MODAL -->
+
+
 <script type="text/javascript">
 
     setupPublicChatWebSocket()
@@ -58,7 +84,12 @@ PUBLIC CHAT
         public_chat_websocket.onmessage = function(e) {
           console.log("incoming message")
           let data = JSON.parse(e.data)
-          appendChatMessage(data)
+          console.log(data)
+          if (data.msg_type === 0) {
+            appendChatMessage(data)
+          } else if (data.msg_type === 1) {
+            showClientErrorModal(data.message)
+          }
         }
 
         public_chat_websocket.onopen = function(e) {
@@ -139,5 +170,10 @@ PUBLIC CHAT
       newMessageDiv.innerHTML = newMessage
       chaLog.insertBefore(newMessageDiv, chaLog.firstChild)
     }
+
+    function showClientErrorModal(message){
+		document.getElementById("id_client_error_modal_body").innerHTML = message
+		document.getElementById("id_trigger_client_error_modal").click()
+	}
 
 </script>

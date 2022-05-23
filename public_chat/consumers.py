@@ -1,8 +1,15 @@
 import json
+from enum import Enum
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.contrib.auth import get_user_model
 
 Account = get_user_model()
+
+
+class MsgType(int, Enum):
+    STANDARD = 0  # standard messages
+    ERROR = 1  # error messages
+
 
 class PublicChatConsumer(AsyncJsonWebsocketConsumer):
 
@@ -27,20 +34,27 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
         print(f"receive json: {content=}")
         command = content.get('command', None)
         if command == "send":
-            await self.channel_layer.group_send(
-                "public_chatroom_1",
-                {
-                    "type": "chat.message",
-                    "image": self.scope['user'].image.url,
-                    "username": self.scope['user'].username,
-                    "user_id": self.scope['user'].id,
-                    "message": content['message'],
-                }
-            )
+            try:
+                if content['message'] == "fuck":
+                    raise ClientError(422, "You are not allowed to cuss")
+                await self.channel_layer.group_send(
+                    "public_chatroom_1",
+                    {
+                        "type": "chat.message",
+                        "msg_type": MsgType.STANDARD,
+                        "image": self.scope['user'].image.url,
+                        "username": self.scope['user'].username,
+                        "user_id": self.scope['user'].id,
+                        "message": content['message'],
+                    }
+                )
+            except ClientError as e:
+                e.__dict__.update({'msg_type': MsgType.ERROR})
+                await self.send_json(e.__dict__)
 
     async def chat_message(self, event):
-        print(f"chat_message from: {event['user_id']}")
         await self.send_json({
+            "msg_type": event.get('msg_type'),
             "image": event.get('image'),
             "username": event.get('username'),
             "user_id": event.get('user_id'),
@@ -48,5 +62,10 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
         })
 
 
+class ClientError(Exception):
 
+    def __init__(self, code, message=None):
+        super().__init__()
+        self.code = code
+        self.message = message
 
