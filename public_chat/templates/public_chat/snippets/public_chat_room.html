@@ -56,12 +56,13 @@ PUBLIC CHAT
         let public_chat_websocket = new WebSocket(ws_path)
 
         public_chat_websocket.onmessage = function(e) {
-          console.log("incoming message" + e)
+          console.log("incoming message")
+          let data = JSON.parse(e.data)
+          appendChatMessage(data)
         }
 
         public_chat_websocket.onopen = function(e) {
           console.log("websocket connection opened")
-          console.log(e)
         }
 
         public_chat_websocket.onclose = function(e) {
@@ -78,6 +79,65 @@ PUBLIC CHAT
           console.log("public chat socket connecting")
         }
 
+        let messageSubmitBtn = document.getElementById("id_chat_message_submit")
+        let messageInput = document.getElementById("id_chat_message_input")
+
+        messageSubmitBtn.onclick = function(e) {
+          public_chat_websocket.send(
+            JSON.stringify({
+                "command": "send",
+                "message": messageInput.value,
+            })
+          )
+          messageInput.value = ""
+        }
+
+        messageInput.focus()
+        messageInput.onkeydown = function(e) {
+          if (e.code === "Enter" && !e.shiftKey) {
+            e.preventDefault()
+          }
+        }
+
+        messageInput.onkeyup = function(e) {
+          if (e.code === "Enter" && e.shiftKey) {
+            // handled automatically by textarea
+          } else if (e.code === "Enter" && !e.shiftKey) { // just enter
+            if (messageInput.value.trim()) {
+              messageSubmitBtn.click()
+            }
+          }
+        }
+    }
+
+    function appendChatMessage(data) {
+      createChatMessage(data.message, data.username, data.image, data.user_id)
+    }
+
+    function createChatMessage(message, username, image, user_id) {
+      let user_profile_url = "{% url 'account:view' user_id=123456789 %}".replace(123456789, user_id)
+      let chaLog = document.getElementById("id_chat_log")
+      let newMessage = `
+        <div class="d-flex message-container">
+
+            <a href="${user_profile_url}" target="_blank">
+                <img src=${image} class="profile-image-chat rounded-circle img-fluid" alt="">
+            </a>
+            <div class="d-flex flex-column" style="margin-left: 5px">
+                <div class="d-flex">
+                    <a href="${user_profile_url}" target="_blank" class="username-href">
+                        <span class="username-span">${username}</span>
+                    </a>
+                </div>
+                <p class="msg-p">
+                    ${message}
+                </p>
+            </div>
+        </div>
+      `
+      let newMessageDiv = document.createElement("div")
+      newMessageDiv.innerHTML = newMessage
+      chaLog.insertBefore(newMessageDiv, chaLog.firstChild)
     }
 
 </script>
