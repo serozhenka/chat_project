@@ -60,7 +60,6 @@
 
 <!-- Client Error MODAL -->
 
-
 <script type="text/javascript">
 
     let ws_scheme = window.location.protocol === "https" ? "wss" : "ws"
@@ -192,17 +191,27 @@
     })
 
     function appendChatMessage(data, maintainPosition, isNew) {
-      createChatMessage(data.message, data.username, data.image, data.user_id, data.natural_timestamp, maintainPosition, isNew)
+      createChatMessage(
+        data.message,
+        data.username,
+        data.image,
+        data.user_id,
+        data.natural_timestamp,
+        maintainPosition,
+        isNew,
+        data.msg_id
+      )
     }
 
-    function createChatMessage(message, username, image, user_id, timestamp, maintainPosition, isNew) {
+    function createChatMessage(message, username, image, user_id, timestamp, maintainPosition, isNew, msg_id) {
       let user_profile_url = "{% url 'account:view' user_id=123456789 %}".replace(123456789, user_id)
       let chatLog = document.getElementById("id_chat_log")
+      let image_id = "id_profile_image_" + msg_id
       let newMessage = `
         <div class="d-flex message-container">
 
             <a href="${user_profile_url}" target="_blank">
-                <img src=${image} class="profile-image-chat rounded-circle img-fluid" alt="">
+                <img src="{% static 'images/dummy_image.png' %}" class="profile-image-chat rounded-circle img-fluid" id="${image_id}">
             </a>
             <div class="d-flex flex-column" style="margin-left: 5px">
                 <div class="d-flex">
@@ -228,6 +237,28 @@
 
       if(!maintainPosition) {
         chatLog.scrollTop = chatLog.scrollHeight
+      }
+
+      preLoadImage(image, image_id)
+    }
+
+    function preloadCallback(src, elementId) {
+      let img = document.getElementById(elementId)
+      img.src = src
+    }
+
+    function preLoadImage(imgSrc, elementId) {
+      let imagePreloader = new Image()
+      imagePreloader.src = imgSrc
+
+      if (imagePreloader.complete) {
+        preloadCallback(imagePreloader.src, elementId)
+        imagePreloader.onload = function(e) {}
+      } else {
+        imagePreloader.onload = function(e) {
+          preloadCallback(imagePreloader.src, elementId)
+          imagePreloader.onload = function(e) {}
+        }
       }
     }
 

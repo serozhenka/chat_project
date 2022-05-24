@@ -253,5 +253,6 @@ class LazyChatMessageSerializer(Serializer):
             'message': obj.content,
             'image': obj.user.image.url,
             'natural_timestamp': calculate_timestamp(obj.timestamp),
+            'msg_id': obj.id,
         }
         return dump_object
