@@ -20,6 +20,7 @@ class MsgType(int, Enum):
     STANDARD = 0  # standard messages
     ERROR = 1  # error messages
     PAYLOAD = 2
+    PROGRESS_BAR = 3
 
 
 class PublicChatConsumer(AsyncJsonWebsocketConsumer):
@@ -90,6 +91,7 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
             elif command == "leave":
                 await self.leave_room(content.get('room_id'))
             elif command == "get_chat_room_messages":
+                await self.display_progress_bar(True)
                 room = await self.get_room_or_exception(content.get('room_id'))
                 payload = await get_chat_room_messages(room=room, page_number=content.get('page_number'))
                 print(payload)
@@ -99,8 +101,10 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
                     await self.send_message_payload(payload.get('messages'), payload.get('new_page_number'))
                 else:
                     raise ClientError(204, "Something went wrong retrieving messages")
+                await self.display_progress_bar(False)
 
         except ClientError as e:
+            await self.display_progress_bar(False)
             await self.handle_client_error(e)
 
     async def chat_message(self, event):
@@ -169,6 +173,12 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
     def create_public_room_chat_message(self, room, user, message):
         PublicChatRoomMessage.objects.create(user=user, room=room, content=message)
 
+    async def display_progress_bar(self, display):
+        await self.send_json({
+            'msg_type': MsgType.PROGRESS_BAR,
+            'display': display,
+        })
+
 class ClientError(Exception):
 
     def __init__(self, code, message):
@@ -205,6 +215,7 @@ def get_chat_room_messages(room, page_number):
         return json.dumps(payload)
     except PublicChatRoomMessage.DoesNotExist:
         return None
+
 
 class LazyChatMessageSerializer(Serializer):
     def get_dump_object(self, obj):

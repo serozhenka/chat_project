@@ -1,9 +1,6 @@
 {% load static %}
 
-{% if debug_mode %}
-PUBLIC CHAT
-<span class="{% if not debug_mode %}d-none{% endif %} page-number" id="id_page_number">1</span>
-{% endif %}
+<span class="{#% if not debug_mode %#}d-none{#% endif %#} page-number" id="id_page_number">1</span>
 
 <div class="card mt-3">
 	<div class="card-header">
@@ -18,10 +15,10 @@ PUBLIC CHAT
 	</div>
 	<div class="card-body p-1">
 		<div class="d-flex flex-column" id="id_chat_log_container">
-			<div class="d-flex flex-row justify-content-center" id="id_chatroom_loading_spinner_container">
-				<div class="spinner-border text-primary"  id="id_chatroom_loading_spinner" role="status"  style="display: none; ">
-					<span class="sr-only">Loading...</span>
-				</div>
+			<div class="d-none justify-content-center" id="id_chatroom_loading_spinner_container">
+				<div class="spinner-border text-info" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
 			</div>
 			<div class="d-flex chat-log" id="id_chat_log">
 
@@ -86,6 +83,8 @@ PUBLIC CHAT
       } else if (data.msg_type === 2) {
         console.log(data)
         handleMessagePayload(data.messages, data.new_page_number)
+      } else if (data.msg_type === 3) {
+        displayLoadingSpinner(data.display)
       }
     }
 
@@ -232,5 +231,16 @@ PUBLIC CHAT
 		document.getElementById("id_client_error_modal_body").innerHTML = message
 		document.getElementById("id_trigger_client_error_modal").click()
 	}
+
+    function displayLoadingSpinner(display) {
+      let spinner = document.getElementById('id_chatroom_loading_spinner_container')
+      if (display) {
+        spinner.classList.remove('d-none')
+        spinner.classList.add('d-flex')
+      } else {
+        spinner.classList.remove('d-flex')
+        spinner.classList.add('d-none')
+      }
+    }
 
 </script>

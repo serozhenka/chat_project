@@ -393,7 +393,7 @@ body {
 .timestamp-span:hover{
 	cursor: pointer;
 }
-#id_chatroom_loading_spinner{
+#id_chatroom_loading_spinner_container{
     position: absolute;
 }
 .connected-users{
