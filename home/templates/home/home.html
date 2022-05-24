@@ -4,13 +4,13 @@
 <div class="container">
 
 	<!-- MEDIUM+ SCREENS -->
-	<div class="main d-none d-md-flex flex-column">
+    {% if request.user.is_authenticated %}
 
+        <div class="main d-none d-md-flex flex-column">
+            {% include 'public_chat/snippets/public_chat_room.html' with room_id=room_id %}
+        </div>
 
-		{% include 'public_chat/snippets/public_chat_room.html' with room_id=room_id %}
-
-
-	</div>
+    {% endif %}
 	<!-- END MEDIUM+ SCREENS -->
 
 	<!-- SMALL SCREENS -->

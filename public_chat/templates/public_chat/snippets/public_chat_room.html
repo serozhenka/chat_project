@@ -90,6 +90,14 @@ PUBLIC CHAT
         }
 
         public_chat_websocket.onopen = function(e) {
+          {# join chat room #}
+          public_chat_websocket.send(
+            JSON.stringify({
+              "command": "join",
+              "room_id": "{{ room_id }}"
+            })
+          )
+
           console.log("websocket connection opened")
         }
 
@@ -115,6 +123,7 @@ PUBLIC CHAT
             JSON.stringify({
                 "command": "send",
                 "message": messageInput.value,
+                "room_id": "{{ room_id }}"
             })
           )
           messageInput.value = ""
