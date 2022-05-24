@@ -13,7 +13,7 @@ from .models import PublicChatRoom, PublicChatRoomMessage
 
 
 Account = get_user_model()
-DEFAULT_CHAT_ROOM_PAGE_SIZE = 10
+DEFAULT_CHAT_ROOM_PAGE_SIZE = 30
 
 
 class MsgType(int, Enum):
@@ -21,6 +21,7 @@ class MsgType(int, Enum):
     ERROR = 1  # error messages
     PAYLOAD = 2
     PROGRESS_BAR = 3
+    CONNECTED_USERS = 4
 
 
 class PublicChatConsumer(AsyncJsonWebsocketConsumer):
@@ -34,7 +35,7 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
 
         self.room_id = None
         await self.accept()
-        await self.channel_layer.group_add("public_chatroom_1", self.channel_name)
+        # await self.channel_layer.group_add("public_chatroom_1", self.channel_name)
 
     async def disconnect(self, code):
         """
@@ -51,7 +52,6 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
         await self.close(code=code)
 
     async def receive_json(self, content, **kwargs):
-        print(f"receive json: {content=}")
         command = content.get('command', None)
 
         try:
@@ -94,7 +94,6 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
                 await self.display_progress_bar(True)
                 room = await self.get_room_or_exception(content.get('room_id'))
                 payload = await get_chat_room_messages(room=room, page_number=content.get('page_number'))
-                print(payload)
 
                 if payload:
                     payload = json.loads(payload)
@@ -140,6 +139,15 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
                 room.group_name,
                 self.channel_name
             )
+
+            connected_users_count = await self.get_count_connected_users(room)
+            await self.channel_layer.group_send(
+                room.group_name,
+                {
+                    'type': 'connected.user.count',
+                    'connected_users_count': connected_users_count,
+                }
+            )
         except ClientError as e:
             await self.handle_client_error(e)
 
@@ -153,6 +161,15 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
             await self.channel_layer.group_discard(
                 room.group_name,
                 self.channel_name
+            )
+
+            connected_users_count = await self.get_count_connected_users(room)
+            await self.channel_layer.group_send(
+                room.group_name,
+                {
+                    'type': 'connected.user.count',
+                    'connected_users_count': connected_users_count,
+                }
             )
         except ClientError as e:
             await self.handle_client_error(e)
@@ -178,6 +195,16 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
             'msg_type': MsgType.PROGRESS_BAR,
             'display': display,
         })
+
+    async def connected_user_count(self, event):
+        await self.send_json({
+            'msg_type': MsgType.CONNECTED_USERS,
+            'connected_users_count': event['connected_users_count']
+        })
+
+    @database_sync_to_async
+    def get_count_connected_users(self, room):
+        return room.users.all().count()
 
 class ClientError(Exception):
 

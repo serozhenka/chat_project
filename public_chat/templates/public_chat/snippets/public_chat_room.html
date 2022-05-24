@@ -7,7 +7,7 @@
 		<div class="d-flex flex-row justify-content-between">
 			<h3 class="">Public Chat</h3>
 			<div class="d-flex flex-row align-items-center">
-				<span class="material-icons m-auto pr-1 connected-users-icon"><i class="bi bi-person-fill"></i></span>
+				<span class="material-icons m-auto pr-1 connected-users-icon"><i class="bi bi-person"></i></span>
 				<span class="m-auto connected-users" id="id_connected_users"></span>
 			</div>
 
@@ -81,10 +81,11 @@
       } else if (data.msg_type === 1) {
         showClientErrorModal(data.message)
       } else if (data.msg_type === 2) {
-        console.log(data)
         handleMessagePayload(data.messages, data.new_page_number)
       } else if (data.msg_type === 3) {
         displayLoadingSpinner(data.display)
+      } else if (data.msg_type === 4) {
+        setConnectedUserCount(data.connected_users_count)
       }
     }
 
@@ -146,6 +147,10 @@
       }
     }
 
+    function setConnectedUserCount(connected_users_count) {
+        document.getElementById("id_connected_users").innerHTML = connected_users_count
+    }
+
     function setPageNumber(pageNumber) {
       document.getElementById("id_page_number").innerHTML = pageNumber
     }
@@ -181,7 +186,6 @@
 
     let chatLog = document.getElementById("id_chat_log")
     chatLog.addEventListener('scroll', function(e) {
-      console.log(chatLog.scrollTop, chatLog.scrollHeight, chatLog.offsetHeight)
       if (Math.abs(chatLog.scrollTop) + 50 >= (chatLog.scrollHeight - chatLog.offsetHeight)) {
         getChatRoomMessages()
       }
