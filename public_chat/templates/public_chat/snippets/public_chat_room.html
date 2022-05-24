@@ -2,8 +2,8 @@
 
 {% if debug_mode %}
 PUBLIC CHAT
-{% endif %}
 <span class="{% if not debug_mode %}d-none{% endif %} page-number" id="id_page_number">1</span>
+{% endif %}
 
 <div class="card mt-3">
 	<div class="card-header">
@@ -66,94 +66,135 @@ PUBLIC CHAT
 
 <script type="text/javascript">
 
-    setupPublicChatWebSocket()
+    let ws_scheme = window.location.protocol === "https" ? "wss" : "ws"
+    let ws_path = null
 
-    function setupPublicChatWebSocket() {
-        let ws_scheme = window.location.protocol === "https" ? "wss" : "ws"
-        let ws_path = null
+    {% if debug_mode %}
+    ws_path = ws_scheme + "://" + window.location.host + "/public_chat/{{ room_id }}/" // development
+    {% else %}
+    ws_path = ws_scheme + "://" + window.location.host + ":8001/public_chat/{{ room_id }}/" // production
+    {% endif %}
 
-        {% if debug_mode %}
-        ws_path = ws_scheme + "://" + window.location.host + "/public_chat/{{ room_id }}/" // development
-        {% else %}
-        ws_path = ws_scheme + "://" + window.location.host + ":8001/public_chat/{{ room_id }}/" // production
-        {% endif %}
+    let public_chat_websocket = new WebSocket(ws_path)
 
-        let public_chat_websocket = new WebSocket(ws_path)
+    public_chat_websocket.onmessage = function(e) {
+      let data = JSON.parse(e.data)
+      if (data.msg_type === 0) {
+        appendChatMessage(data, true, true)
+      } else if (data.msg_type === 1) {
+        showClientErrorModal(data.message)
+      } else if (data.msg_type === 2) {
+        console.log(data)
+        handleMessagePayload(data.messages, data.new_page_number)
+      }
+    }
 
-        public_chat_websocket.onmessage = function(e) {
-          let data = JSON.parse(e.data)
-          if (data.msg_type === 0) {
-            appendChatMessage(data)
-          } else if (data.msg_type === 1) {
-            showClientErrorModal(data.message)
-          }
+    public_chat_websocket.onopen = function(e) {
+      {# join chat room #}
+      public_chat_websocket.send(
+        JSON.stringify({
+          "command": "join",
+          "room_id": "{{ room_id }}"
+        })
+      )
+      getChatRoomMessages()
+
+      console.log("websocket connection opened")
+    }
+
+    public_chat_websocket.onclose = function(e) {
+      console.log("websocket connection closed" + e)
+    }
+
+    public_chat_websocket.onerror = function(e) {
+      console.log("websocket error" + e)
+    }
+
+    if (public_chat_websocket.readyState === WebSocket.OPEN) {
+      console.log("public chat socket opened")
+    } else if (public_chat_websocket.readyState === WebSocket.CONNECTING) {
+      console.log("public chat socket connecting")
+    }
+
+    let messageSubmitBtn = document.getElementById("id_chat_message_submit")
+    let messageInput = document.getElementById("id_chat_message_input")
+
+    messageSubmitBtn.onclick = function(e) {
+      public_chat_websocket.send(
+        JSON.stringify({
+            "command": "send",
+            "message": messageInput.value,
+            "room_id": "{{ room_id }}"
+        })
+      )
+      messageInput.value = ""
+    }
+
+    messageInput.focus()
+    messageInput.onkeydown = function(e) {
+      if (e.code === "Enter" && !e.shiftKey) {
+        e.preventDefault()
+      }
+    }
+
+    messageInput.onkeyup = function(e) {
+      if (e.code === "Enter" && e.shiftKey) {
+        // handled automatically by textarea
+      } else if (e.code === "Enter" && !e.shiftKey) { // just enter
+        if (messageInput.value.trim()) {
+          messageSubmitBtn.click()
         }
+      }
+    }
 
-        public_chat_websocket.onopen = function(e) {
-          {# join chat room #}
-          public_chat_websocket.send(
-            JSON.stringify({
-              "command": "join",
-              "room_id": "{{ room_id }}"
-            })
-          )
+    function setPageNumber(pageNumber) {
+      document.getElementById("id_page_number").innerHTML = pageNumber
+    }
 
-          console.log("websocket connection opened")
-        }
+    function setPaginationExhausted(pageNumber) {
+      setPageNumber(-1)
+    }
 
-        public_chat_websocket.onclose = function(e) {
-          console.log("websocket connection closed" + e)
-        }
-
-        public_chat_websocket.onerror = function(e) {
-          console.log("websocket error" + e)
-        }
-
-        if (public_chat_websocket.readyState === WebSocket.OPEN) {
-          console.log("public chat socket opened")
-        } else if (public_chat_websocket.readyState === WebSocket.CONNECTING) {
-          console.log("public chat socket connecting")
-        }
-
-        let messageSubmitBtn = document.getElementById("id_chat_message_submit")
-        let messageInput = document.getElementById("id_chat_message_input")
-
-        messageSubmitBtn.onclick = function(e) {
-          public_chat_websocket.send(
-            JSON.stringify({
-                "command": "send",
-                "message": messageInput.value,
-                "room_id": "{{ room_id }}"
-            })
-          )
-          messageInput.value = ""
-        }
-
-        messageInput.focus()
-        messageInput.onkeydown = function(e) {
-          if (e.code === "Enter" && !e.shiftKey) {
-            e.preventDefault()
-          }
-        }
-
-        messageInput.onkeyup = function(e) {
-          if (e.code === "Enter" && e.shiftKey) {
-            // handled automatically by textarea
-          } else if (e.code === "Enter" && !e.shiftKey) { // just enter
-            if (messageInput.value.trim()) {
-              messageSubmitBtn.click()
-            }
-          }
+    function handleMessagePayload(messages, newPageNumber) {
+        if (messages != null) {
+          setPageNumber(newPageNumber)
+          messages.forEach(function(message) {
+            appendChatMessage(message, true, false)
+          })
+        } else {
+          setPaginationExhausted()
         }
     }
 
-    function appendChatMessage(data) {
-      createChatMessage(data.message, data.username, data.image, data.user_id, data.natural_timestamp)
+    function getChatRoomMessages() {
+      let pageNumber = document.getElementById("id_page_number").innerHTML
+      if (pageNumber !== "-1") {
+        setPageNumber("-1") // query in progress
+        public_chat_websocket.send(
+          JSON.stringify({
+            "command": "get_chat_room_messages",
+            "room_id": "{{ room_id }}",
+            "page_number": pageNumber,
+          })
+        )
+      }
     }
 
-    function createChatMessage(message, username, image, user_id, timestamp) {
+    let chatLog = document.getElementById("id_chat_log")
+    chatLog.addEventListener('scroll', function(e) {
+      console.log(chatLog.scrollTop, chatLog.scrollHeight, chatLog.offsetHeight)
+      if (Math.abs(chatLog.scrollTop) + 50 >= (chatLog.scrollHeight - chatLog.offsetHeight)) {
+        getChatRoomMessages()
+      }
+    })
+
+    function appendChatMessage(data, maintainPosition, isNew) {
+      createChatMessage(data.message, data.username, data.image, data.user_id, data.natural_timestamp, maintainPosition, isNew)
+    }
+
+    function createChatMessage(message, username, image, user_id, timestamp, maintainPosition, isNew) {
       let user_profile_url = "{% url 'account:view' user_id=123456789 %}".replace(123456789, user_id)
-      let chaLog = document.getElementById("id_chat_log")
+      let chatLog = document.getElementById("id_chat_log")
       let newMessage = `
         <div class="d-flex message-container">
 
@@ -175,7 +216,16 @@ PUBLIC CHAT
       `
       let newMessageDiv = document.createElement("div")
       newMessageDiv.innerHTML = newMessage
-      chaLog.insertBefore(newMessageDiv, chaLog.firstChild)
+
+      if (isNew) {
+        chatLog.insertBefore(newMessageDiv, chatLog.firstChild)
+      } else {
+        chatLog.appendChild(newMessageDiv)
+      }
+
+      if(!maintainPosition) {
+        chatLog.scrollTop = chatLog.scrollHeight
+      }
     }
 
     function showClientErrorModal(message){
