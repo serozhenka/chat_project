@@ -221,7 +221,7 @@
                     <span class="d-flex align-items-center timestamp-span">${timestamp}</span>
                 </div>
                 <p class="msg-p">
-                    ${message}
+                    ${validateText(message)}
                 </p>
             </div>
         </div>
@@ -242,26 +242,6 @@
       preLoadImage(image, image_id)
     }
 
-    function preloadCallback(src, elementId) {
-      let img = document.getElementById(elementId)
-      img.src = src
-    }
-
-    function preLoadImage(imgSrc, elementId) {
-      let imagePreloader = new Image()
-      imagePreloader.src = imgSrc
-
-      if (imagePreloader.complete) {
-        preloadCallback(imagePreloader.src, elementId)
-        imagePreloader.onload = function(e) {}
-      } else {
-        imagePreloader.onload = function(e) {
-          preloadCallback(imagePreloader.src, elementId)
-          imagePreloader.onload = function(e) {}
-        }
-      }
-    }
-
     function showClientErrorModal(message){
 		document.getElementById("id_client_error_modal_body").innerHTML = message
 		document.getElementById("id_trigger_client_error_modal").click()
@@ -277,5 +257,21 @@
         spinner.classList.add('d-none')
       }
     }
-
+    function validateText(string) {
+      let md = window.markdownit().set({
+          highlight: function (str, lang) {
+            if (lang && hljs.getLanguage(lang)) {
+              try {
+                return '<pre class="hljs"><code>' +
+                       hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
+                       '</code></pre>';
+              } catch (__) {}
+            } else {
+              return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
+            }
+          }
+      });
+      const result = md.render(string);
+      return result
+    }
 </script>
