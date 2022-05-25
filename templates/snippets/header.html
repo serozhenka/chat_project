@@ -17,10 +17,14 @@
 						<div class="d-flex flex-row">
 
 							<div class="btn-group dropleft">
-								<div class="d-flex notifications-icon-container rounded-circle align-items-center me-3" id="id_chat_notification_dropdown_toggle" data-toggle="dropdown">
+								<div class="d-flex notifications-icon-container rounded-circle align-items-center me-3" id="id_chat_notification_dropdown_toggle" data-bs-toggle="dropdown">
 									<span id="id_chat_notifications_count" class="notify-badge"></span>
 									<span class="d-flex material-icons notifications-material-icon m-auto align-items-center"><i class="bi bi-chat-left-text-fill fs-4"></i></span>
-                                    <div class="dropdown-menu scrollable-menu" aria-labelledby="id_chat_notification_dropdown_toggle" id="id_chat_notifications_container">
+                                    <div class="dropdown-menu scrollable-menu p-3" aria-labelledby="id_chat_notification_dropdown_toggle" id="id_chat_notifications_container">
+                                        <div class="d-flex justify-content-end text-primary">
+                                            <a href="{% url 'private-chat-room' %}" class="text-decoration-none me-2" id="id_chat_notification_dropdown_toggle_link">Go to chat</a>
+                                            <i class="bi bi-arrows-move"></i>
+                                        </div>
 									</div>
 								</div>
 							</div>
@@ -84,6 +88,7 @@
 </div>
 
 <script type="text/javascript">
+    setupChatDropdownHeader()
 
     function executeQuery() {
       let query = document.getElementById('id_q_small').value
@@ -95,5 +100,12 @@
       window.location.href = "{% url 'search' %}?q=" + query
 
       return false;
+    }
+
+    function setupChatDropdownHeader() {
+      let link = document.getElementById("id_chat_notification_dropdown_toggle_link")
+      link.addEventListener('click', function(e) {
+        window.location.href = e.target.href
+      })
     }
 </script>

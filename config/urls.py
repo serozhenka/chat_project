@@ -39,6 +39,9 @@ urlpatterns = [
     path('accounts/', include('users.urls')),
     path('search/', auth_views.account_search_view, name='search'),
     path('friends/', include('friends.urls')),
+
+    path('chat/', include('chat.urls')),
+
 ]
 
 if settings.DEBUG:

@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from chat.utils import get_or_create_private_chat
 
 class FriendList(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='user')
@@ -11,11 +12,20 @@ class FriendList(models.Model):
 
     def add_friend(self, account):
         if account in self.friends.all():
+            print(1)
             self.friends.add(account)
+
+            chat = get_or_create_private_chat(user1=self.user, user2=account)
+            chat.is_active = True
+            chat.save()
 
     def remove_friend(self, account):
         if account in self.friends.all():
             self.friends.remove(account)
+
+            chat = get_or_create_private_chat(user1=self.user, user2=account)
+            chat.is_active = False
+            chat.save()
 
     def unfriend(self, removee):
         # remove a friend from person list that terminates a friendship
@@ -54,9 +64,9 @@ class FriendRequest(models.Model):
         """
 
         receiver_fl, _ = FriendList.objects.get_or_create(user=self.receiver)
-        receiver_fl.friends.add(self.sender)
+        receiver_fl.add_friend(self.sender)
         sender_fl, _ = FriendList.objects.get_or_create(user=self.sender)
-        sender_fl.friends.add(self.receiver)
+        sender_fl.add_friend(self.receiver)
         self.is_active = False
         self.save()
 
