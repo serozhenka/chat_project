@@ -59,64 +59,48 @@
 </div>
 
 <!-- Client Error MODAL -->
+{% include 'js/messages.html' %}
+{% include 'js/utils.html' %}
 
 <script type="text/javascript">
 
+    // websocket configuration
     let ws_scheme = window.location.protocol === "https" ? "wss" : "ws"
-    let ws_path = null
-
-    {% if debug_mode %}
-    ws_path = ws_scheme + "://" + window.location.host + "/public_chat/{{ room_id }}/" // development
-    {% else %}
-    ws_path = ws_scheme + "://" + window.location.host + ":8001/public_chat/{{ room_id }}/" // production
-    {% endif %}
-
+    let ws_path = ws_scheme + "://" + window.location.host + "{% if not debug_mode %}:8001{% endif %}/public_chat/{{ room_id }}/"
     let public_chat_websocket = new WebSocket(ws_path)
 
+    // handle opening websocket connection
+    public_chat_websocket.onopen = function(e) {
+      public_chat_websocket.send(
+          JSON.stringify({
+            "command": "join",
+            "room_id": "{{ room_id }}"
+          })
+      )
+      getChatRoomMessages()
+    }
+
+    // handle message send from consumer
     public_chat_websocket.onmessage = function(e) {
       let data = JSON.parse(e.data)
-      if (data.msg_type === 0) {
-        appendChatMessage(data, true, true)
-      } else if (data.msg_type === 1) {
-        showClientErrorModal(data.message)
-      } else if (data.msg_type === 2) {
-        handleMessagePayload(data.messages, data.new_page_number)
-      } else if (data.msg_type === 3) {
-        displayLoadingSpinner(data.display)
-      } else if (data.msg_type === 4) {
-        setConnectedUserCount(data.connected_users_count)
+      switch(data.msg_type) {
+        case 0: appendChatMessage(data, true, true); break
+        case 1: showClientErrorModal(data.message); break
+        case 2: handleMessagePayload(data.messages, data.new_page_number); break
+        case 4: setConnectedUserCount(data.connected_users_count); break
+        case 3: displayLoadingSpinner(data.display); break
       }
     }
 
-    public_chat_websocket.onopen = function(e) {
-      {# join chat room #}
-      public_chat_websocket.send(
-        JSON.stringify({
-          "command": "join",
-          "room_id": "{{ room_id }}"
-        })
-      )
-      getChatRoomMessages()
+    public_chat_websocket.onclose = function(e) { console.log("websocket connection closed" + e) }
+    public_chat_websocket.onerror = function(e) { console.log("websocket error" + e) }
+    if (public_chat_websocket.readyState === WebSocket.OPEN) { console.log("public chat socket opened") }
+    else if (public_chat_websocket.readyState === WebSocket.CONNECTING) { console.log("public chat socket connecting") }
 
-      console.log("websocket connection opened")
-    }
-
-    public_chat_websocket.onclose = function(e) {
-      console.log("websocket connection closed" + e)
-    }
-
-    public_chat_websocket.onerror = function(e) {
-      console.log("websocket error" + e)
-    }
-
-    if (public_chat_websocket.readyState === WebSocket.OPEN) {
-      console.log("public chat socket opened")
-    } else if (public_chat_websocket.readyState === WebSocket.CONNECTING) {
-      console.log("public chat socket connecting")
-    }
-
+    // user message sending process
     let messageSubmitBtn = document.getElementById("id_chat_message_submit")
     let messageInput = document.getElementById("id_chat_message_input")
+    messageInput.focus()
 
     messageSubmitBtn.onclick = function(e) {
       public_chat_websocket.send(
@@ -129,60 +113,18 @@
       messageInput.value = ""
     }
 
-    messageInput.focus()
     messageInput.onkeydown = function(e) {
-      if (e.code === "Enter" && !e.shiftKey) {
-        e.preventDefault()
-      }
+      if (e.code === "Enter" && !e.shiftKey) e.preventDefault()
     }
 
     messageInput.onkeyup = function(e) {
-      if (e.code === "Enter" && e.shiftKey) {
-        // handled automatically by textarea
-      } else if (e.code === "Enter" && !e.shiftKey) { // just enter
-        if (messageInput.value.trim()) {
-          messageSubmitBtn.click()
-        }
+      if (e.code === "Enter" && e.shiftKey) { /* handled automatically by textarea*/ }
+      else if (e.code === "Enter" && !e.shiftKey) { // just enter
+        if (messageInput.value.trim()) messageSubmitBtn.click()
       }
     }
 
-    function setConnectedUserCount(connected_users_count) {
-        document.getElementById("id_connected_users").innerHTML = connected_users_count
-    }
-
-    function setPageNumber(pageNumber) {
-      document.getElementById("id_page_number").innerHTML = pageNumber
-    }
-
-    function setPaginationExhausted(pageNumber) {
-      setPageNumber(-1)
-    }
-
-    function handleMessagePayload(messages, newPageNumber) {
-        if (messages != null) {
-          setPageNumber(newPageNumber)
-          messages.forEach(function(message) {
-            appendChatMessage(message, true, false)
-          })
-        } else {
-          setPaginationExhausted()
-        }
-    }
-
-    function getChatRoomMessages() {
-      let pageNumber = document.getElementById("id_page_number").innerHTML
-      if (pageNumber !== "-1") {
-        setPageNumber("-1") // query in progress
-        public_chat_websocket.send(
-          JSON.stringify({
-            "command": "get_chat_room_messages",
-            "room_id": "{{ room_id }}",
-            "page_number": pageNumber,
-          })
-        )
-      }
-    }
-
+    // chat scroll event listener to render new messages
     let chatLog = document.getElementById("id_chat_log")
     chatLog.addEventListener('scroll', function(e) {
       if (Math.abs(chatLog.scrollTop) + 50 >= (chatLog.scrollHeight - chatLog.offsetHeight)) {
@@ -190,88 +132,10 @@
       }
     })
 
-    function appendChatMessage(data, maintainPosition, isNew) {
-      createChatMessage(
-        data.message,
-        data.username,
-        data.image,
-        data.user_id,
-        data.natural_timestamp,
-        maintainPosition,
-        isNew,
-        data.msg_id
-      )
-    }
-
-    function createChatMessage(message, username, image, user_id, timestamp, maintainPosition, isNew, msg_id) {
-      let user_profile_url = "{% url 'account:view' user_id=123456789 %}".replace(123456789, user_id)
-      let chatLog = document.getElementById("id_chat_log")
-      let image_id = "id_profile_image_" + msg_id
-      let newMessage = `
-        <div class="d-flex message-container">
-
-            <a href="${user_profile_url}" target="_blank">
-                <img src="{% static 'images/dummy_image.png' %}" class="profile-image-chat rounded-circle img-fluid" id="${image_id}">
-            </a>
-            <div class="d-flex flex-column" style="margin-left: 5px">
-                <div class="d-flex">
-                    <a href="${user_profile_url}" target="_blank" class="username-href">
-                        <span class="username-span">${username}</span>
-                    </a>
-                    <span class="d-flex align-items-center timestamp-span">${timestamp}</span>
-                </div>
-                <p class="msg-p">
-                    ${validateText(message)}
-                </p>
-            </div>
-        </div>
-      `
-      let newMessageDiv = document.createElement("div")
-      newMessageDiv.innerHTML = newMessage
-
-      if (isNew) {
-        chatLog.insertBefore(newMessageDiv, chatLog.firstChild)
-      } else {
-        chatLog.appendChild(newMessageDiv)
-      }
-
-      if(!maintainPosition) {
-        chatLog.scrollTop = chatLog.scrollHeight
-      }
-
-      preLoadImage(image, image_id)
-    }
 
     function showClientErrorModal(message){
 		document.getElementById("id_client_error_modal_body").innerHTML = message
 		document.getElementById("id_trigger_client_error_modal").click()
 	}
 
-    function displayLoadingSpinner(display) {
-      let spinner = document.getElementById('id_chatroom_loading_spinner_container')
-      if (display) {
-        spinner.classList.remove('d-none')
-        spinner.classList.add('d-flex')
-      } else {
-        spinner.classList.remove('d-flex')
-        spinner.classList.add('d-none')
-      }
-    }
-    function validateText(string) {
-      let md = window.markdownit().set({
-          highlight: function (str, lang) {
-            if (lang && hljs.getLanguage(lang)) {
-              try {
-                return '<pre class="hljs"><code>' +
-                       hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
-                       '</code></pre>';
-              } catch (__) {}
-            } else {
-              return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
-            }
-          }
-      });
-      const result = md.render(string);
-      return result
-    }
 </script>

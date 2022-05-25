@@ -1,0 +1,44 @@
+<script type="text/javascript">
+    function setConnectedUserCount(connected_users_count) {
+      document.getElementById("id_connected_users").innerHTML = connected_users_count
+    }
+
+    function setPageNumber(pageNumber) {
+      document.getElementById("id_page_number").innerHTML = pageNumber
+    }
+
+    // last page or loading content
+    function setPaginationExhausted(pageNumber) { setPageNumber(-1) }
+
+    // display loading spinner when loading new messages
+    function displayLoadingSpinner(display) {
+      let spinner = document.getElementById('id_chatroom_loading_spinner_container')
+
+      if (display) {
+        spinner.classList.remove('d-none')
+        spinner.classList.add('d-flex')
+      } else {
+        spinner.classList.remove('d-flex')
+        spinner.classList.add('d-none')
+      }
+    }
+
+    // highlighting text with highlight.js and markdown-it
+    function validateText(string) {
+      let md = window.markdownit().set({
+          highlight: function (str, lang) {
+            if (lang && hljs.getLanguage(lang)) {
+              try {
+                return '<pre class="hljs"><code>' +
+                       hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
+                       '</code></pre>';
+              } catch (__) {}
+            } else {
+              return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
+            }
+          }
+      });
+      const result = md.render(string);
+      return result
+    }
+</script>
