@@ -1,9 +1,14 @@
+import json
+
 from django.shortcuts import render
+from django.http import HttpResponse
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 
 from .models import PrivateChatRoom, PrivateChatRoomMessage
+from .utils import get_or_create_private_chat
+from users.models import Account
 
 @login_required(login_url='login')
 def private_chat_view(request):
@@ -27,3 +32,18 @@ def private_chat_view(request):
         'm_and_f': m_and_f,
         'debug': settings.DEBUG,
     })
+
+def get_private_chat(request):
+    user1 = request.user
+    payload = {}
+    if request.method == "POST":
+        if user1.is_authenticated:
+            user2_id = request.POST.get("user_id")
+            try:
+                user2 = Account.objects.get(id=user2_id)
+                chat = get_or_create_private_chat(user1=user1, user2=user2)
+                payload['response'] = 'success'
+                payload['room_id'] = chat.id
+            except Account.DoesNotExist:
+                payload['response'] = 'error'
+        return HttpResponse(json.dumps(payload), content_type="application/json")

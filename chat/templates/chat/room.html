@@ -192,13 +192,99 @@
 
 
 <script type="text/javascript">
-    onLoad()
+    let chatSocket = null
+    let roomId = null
+    let ws_scheme = window.location.protocol === "https" ? "wss" : "ws"
+    let ws_path = ws_scheme + "://" + window.location.host +  "{% if not debug %}:8001{% endif %}/chat/" + roomId + "/";
 
-    function onLoad() {
+    // on load function
+    (function () {
+      {% if m_and_f %}
+        onSelectFriend("{{ m_and_f.0.friend.id }}")
+      {% endif %}
+
       {% for x in m_and_f %}
           preLoadImage("{{ x.friend.image.url|safe }}", "id_friend_img_{{ x.friend.id }}")
       {% endfor %}
+    })();
+
+    // close websocket connection
+    function closeWebSocket() {
+      if(chatSocket) {
+        chatSocket.close()
+        chatSocket = null
+      }
     }
+
+    // setup new websocket connection every time user chooses new friend
+    function setupWebsocket(room_id) {
+      closeWebSocket()
+      chatSocket = new WebSocket(ws_path)
+
+      // handle opening websocket connection
+      chatSocket.onopen = function(e) {
+          console.log("connection opened")
+          chatSocket.send(
+              JSON.stringify({
+                "command": "join",
+                "room_id": roomId,
+              })
+          )
+          {#getChatRoomMessages()#}
+      }
+
+    // handle message send from consumer
+      chatSocket.onmessage = function(e) {
+          let data = JSON.parse(e.data)
+          switch(data.msg_type) {
+            case 0: break
+            case 1: break
+            case 2: break
+            case 3: break
+            case 4: break
+          }
+      }
+
+      chatSocket.onclose = function(e) { console.log("websocket connection closed" + e) }
+      chatSocket.onerror = function(e) { console.log("websocket error" + e) }
+      if (chatSocket.readyState === WebSocket.OPEN) { console.log("private chat socket opened") }
+      else if (chatSocket.readyState === WebSocket.CONNECTING) { console.log("private chat socket connecting") }
+    }
+
+    // called when user clicks friend block
+    function onSelectFriend(user_id) {
+        getPrivateChat(user_id)
+    }
+
+    function getPrivateChat(user_id) {
+        let payload = {
+          'csrfmiddlewaretoken': "{{ csrf_token }}",
+          "user_id": user_id,
+        }
+
+        $.ajax({
+          type: "POST",
+          dataType: "json",
+          url: "{% url 'get-private-chat' %}",
+          data: payload,
+          timeout: 5000,
+          success: function(data) {
+            if (data.response === "success") {
+              setupWebsocket(data.user_id)
+            } else if (data.response) {
+              alert(data.response)
+            }
+          },
+          error: function(data) {
+            alert("something wrong happened")
+          },
+          complete: function(data) {
+            {# doing nothing #}
+          },
+        })
+    }
+
+
 
 </script>
 
