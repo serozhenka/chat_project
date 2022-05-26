@@ -112,9 +112,9 @@
 		<div class="col-sm-9 m-0 p-2">
 			<div class="card" id="id_chatroom_card">
 				<div class="d-flex flex-row align-items-center card-header" id="id_room_title">
-				<a class="d-flex flex-row" target="_blank" id="id_user_info_container">
-					<img class="profile-image rounded-circle img-fluid" id="id_other_user_profile_image" src="{% static 'codingwithmitch/dummy_image.png' %}">
-					<h3 class="ml-2" id="id_other_username"></h3>
+				<a class="d-flex flex-row text-decoration-none" target="_blank" id="id_user_info_container">
+					<img class="profile-image rounded-circle img-fluid" id="id_other_user_profile_image" src="{% static 'images/dummy_image.png' %}">
+					<h3 class="ms-2" id="id_other_username"></h3>
 				</a>
 
 				</div>
@@ -220,10 +220,12 @@
     function setupWebsocket(room_id) {
       closeWebSocket()
       chatSocket = new WebSocket(ws_path)
+      roomId = room_id
 
       // handle opening websocket connection
       chatSocket.onopen = function(e) {
           console.log("connection opened")
+          getUserInfo()
           chatSocket.send(
               JSON.stringify({
                 "command": "join",
@@ -237,8 +239,8 @@
       chatSocket.onmessage = function(e) {
           let data = JSON.parse(e.data)
           switch(data.msg_type) {
-            case 0: break
-            case 1: break
+            case "get_user_info": handleUserInfoPayload(data.user_info); break
+            case "join": roomId = data.room_id; break
             case 2: break
             case 3: break
             case 4: break
@@ -249,6 +251,21 @@
       chatSocket.onerror = function(e) { console.log("websocket error" + e) }
       if (chatSocket.readyState === WebSocket.OPEN) { console.log("private chat socket opened") }
       else if (chatSocket.readyState === WebSocket.CONNECTING) { console.log("private chat socket connecting") }
+    }
+
+    // send request to a consumers to get user info
+    function getUserInfo() {
+        chatSocket.send(JSON.stringify({
+            'command': 'get_user_info',
+            'room_id': roomId,
+        }))
+    }
+
+    // handle response received from consumer when requesting user info
+    function handleUserInfoPayload(user_info) {
+      document.getElementById("id_other_username").innerHTML = user_info.username
+      preLoadImage(user_info.image, "id_other_user_profile_image")
+      document.getElementById("id_user_info_container").href = "{% url 'account:view' user_id=123456789 %}".replace(123456789, user_info.id)
     }
 
     // called when user clicks friend block
@@ -270,7 +287,7 @@
           timeout: 5000,
           success: function(data) {
             if (data.response === "success") {
-              setupWebsocket(data.user_id)
+              setupWebsocket(data.room_id)
             } else if (data.response) {
               alert(data.response)
             }

@@ -1,12 +1,20 @@
+import json
 from enum import Enum
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from channels.db import database_sync_to_async
+from django.core.serializers import serialize
 
-# class MsgType(int, Enum):
-#     STANDARD = 0  # standard messages
-#     ERROR = 1  # error messages
-#     PAYLOAD = 2
-#     PROGRESS_BAR = 3
-#     CONNECTED_USERS = 4
+from .models import PrivateChatRoom, PrivateChatRoomMessage
+from friends.models import FriendList
+from users.utils import LazyAccountEncoder
+
+class MsgType(str, Enum):
+    # STANDARD = 0  # standard messages
+    # ERROR = 1  # error messages
+    # PAYLOAD = 2
+    # PROGRESS_BAR = 3
+    JOIN = "join"
+    GET_USER_INFO = "get_user_info"
 
 class PrivateChatConsumer(AsyncJsonWebsocketConsumer):
 
@@ -26,7 +34,7 @@ class PrivateChatConsumer(AsyncJsonWebsocketConsumer):
         command = content.get("command", None)
         try:
             if command == "join":
-                pass
+                await self.join_room(content.get("room_id"))
             elif command == "leave":
                 pass
             elif command == "send":
@@ -34,9 +42,20 @@ class PrivateChatConsumer(AsyncJsonWebsocketConsumer):
             elif command == "get_room_chat_messages":
                 pass
             elif command == "get_user_info":
-                pass
+                print(content, content.get("room_id"))
+                room = await self.get_room_or_error(self.scope['user'], content.get('room_id'))
+                print(room)
+                payload = await self.get_user_info(self.scope['user'], room)
+                if payload:
+                    payload = json.loads(payload)
+                    await self.send_json({
+                        "msg_type": MsgType.GET_USER_INFO,
+                        "user_info": payload['user_info']
+                    })
+                else:
+                    raise Exception("Something went wrong retrieving user details")
         except Exception as e:
-            pass
+            raise e
 
     async def disconnect(self, code):
         """
@@ -51,6 +70,14 @@ class PrivateChatConsumer(AsyncJsonWebsocketConsumer):
         """
         # The logged-in user is in our scope thanks to the authentication ASGI middleware (AuthMiddlewareStack)
         print("ChatConsumer: join_room: " + str(room_id))
+        try:
+            room = await self.get_room_or_error(self.scope['user'], room_id)
+        except Exception as e:
+            return
+        await self.send_json({
+            'msg_type': MsgType.JOIN,
+            'room_id': room_id,
+        })
 
     async def leave_room(self, room_id):
         """
@@ -108,3 +135,41 @@ class PrivateChatConsumer(AsyncJsonWebsocketConsumer):
             - Hide the progress bar on UI
         """
         print("DISPLAY PROGRESS BAR: " + str(is_displayed))
+
+    @database_sync_to_async
+    def get_room_or_error(self, user, room_id):
+        """
+        Getting the private chat room for the user and
+        also checking that user has perms
+        """
+        try:
+            room = PrivateChatRoom.objects.get(id=room_id)
+        except PrivateChatRoom.DoesNotExist:
+            # TODO
+            raise Exception("to do")
+
+        if user not in [room.user1, room.user2]:
+            raise Exception("You do not have permission to join this room")
+
+        friend_list = FriendList.objects.get(user=user).friends.all()
+        if not any(x in friend_list for x in [room.user1, room.user2]):
+            raise Exception("Must be friends to chat")
+
+        return room
+
+    @database_sync_to_async
+    def get_user_info(self, user, room):
+        """
+        Retrieve info for the user the authenticated user chats with
+        """
+        try:
+            other_user = room.user1 if room.user1 != user else room.user2
+            payload = {}
+            s = LazyAccountEncoder()
+            payload['user_info'] = s.serialize([other_user])[0]
+            return json.dumps(payload)
+        except Exception as e:
+            print(e)
+        return None
+
+
