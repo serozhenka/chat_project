@@ -3,16 +3,14 @@ from enum import Enum
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
-from django.contrib.humanize.templatetags.humanize import naturalday
 from django.core.serializers.python import Serializer
 from django.core.paginator import Paginator
 from django.core.serializers import serialize
 from django.utils import timezone
-from datetime import datetime
 from .models import PublicChatRoom, PublicChatRoomMessage
+from chat.exceptions import ClientError
+from chat.utils import calculate_timestamp
 
-
-Account = get_user_model()
 DEFAULT_CHAT_ROOM_PAGE_SIZE = 30
 
 
@@ -63,6 +61,12 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
                 if str(room_id) == str(self.room_id):
                     room = await self.get_room_or_exception(self.room_id)
 
+                    message = await self.create_public_room_chat_message(
+                        user=self.scope['user'],
+                        room=room,
+                        message=content['message']
+                    )
+
                     await self.channel_layer.group_send(
                         room.group_name,
                         {
@@ -72,14 +76,10 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
                             "username": self.scope['user'].username,
                             "user_id": self.scope['user'].id,
                             "message": content['message'],
+                            'msg_id': message.id,
                         }
                     )
 
-                    await self.create_public_room_chat_message(
-                        user=self.scope['user'],
-                        room=room,
-                        message=content['message']
-                    )
                 else:
                     raise ClientError(
                         "Access Denied",
@@ -115,6 +115,7 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
             "user_id": event.get('user_id'),
             "message": event.get('message').strip(),
             "natural_timestamp": timestamp,
+            "msg_id": event.get('msg_id'),
         })
 
     async def send_message_payload(self, messages, new_page_number):
@@ -188,7 +189,7 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def create_public_room_chat_message(self, room, user, message):
-        PublicChatRoomMessage.objects.create(user=user, room=room, content=message)
+        return PublicChatRoomMessage.objects.create(user=user, room=room, content=message)
 
     async def display_progress_bar(self, display):
         await self.send_json({
@@ -205,23 +206,6 @@ class PublicChatConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def get_count_connected_users(self, room):
         return room.users.all().count()
-
-class ClientError(Exception):
-
-    def __init__(self, code, message):
-        super().__init__()
-        self.code = code
-        self.message = message
-
-
-def calculate_timestamp(timestamp):
-    # today or yesterday
-    if naturalday(timestamp) in ["today", "yesterday"]:
-        str_time = datetime.strftime(timestamp, "%I:%M %p")
-        ts = f'{naturalday(timestamp)} at {str_time}'
-    else:
-        ts = datetime.strftime(timestamp, "%m/%d/%Y")
-    return str(ts)
 
 @database_sync_to_async
 def get_chat_room_messages(room, page_number):

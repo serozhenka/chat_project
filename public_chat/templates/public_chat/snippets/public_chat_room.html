@@ -103,7 +103,8 @@
     messageInput.focus()
 
     messageSubmitBtn.onclick = function(e) {
-      public_chat_websocket.send(
+     if (messageInput.value.trim()) {
+       public_chat_websocket.send(
         JSON.stringify({
             "command": "send",
             "message": messageInput.value,
@@ -111,6 +112,7 @@
         })
       )
       messageInput.value = ""
+     }
     }
 
     messageInput.onkeydown = function(e) {
@@ -120,7 +122,7 @@
     messageInput.onkeyup = function(e) {
       if (e.code === "Enter" && e.shiftKey) { /* handled automatically by textarea*/ }
       else if (e.code === "Enter" && !e.shiftKey) { // just enter
-        if (messageInput.value.trim()) messageSubmitBtn.click()
+        messageSubmitBtn.click()
       }
     }
 
