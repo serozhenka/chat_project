@@ -182,7 +182,7 @@ AUTH_USER_MODEL = 'users.Account'
 # ]
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 10
-
+BASE_URL = "http://localhost:8000"
 TEMP = os.path.join(BASE_DIR, 'mediafiles/profile_images/temp')
 
 CHANNEL_LAYERS = {
