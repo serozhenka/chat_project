@@ -108,7 +108,7 @@
 			{% endif %}
 
 			{% if is_friend %}
-				<div class="d-flex flex-row align-items-center btn btn-primary m-2 px-4" onclick="createOrReturnPrivateChat('{{id}}')">
+				<div class="d-flex flex-row align-items-center btn btn-primary m-2 px-4" onclick="startPrivateChat('{{owner.id}}')">
 {#					<i class="bi bi-envelope-fill fs-2"></i>#}
 					<span class="message-btn-text m-auto p-2">Message</span>
 				</div>
@@ -184,7 +184,7 @@
 {% include 'friends/snippets/decline_friend_request.html' %}
 {% include 'friends/snippets/cancel_friend_request.html' %}
 {% include 'friends/snippets/remove_friend.html' %}
-{#% include 'chat/snippets/create_or_return_private_chat.html' %##}
+{% include 'js/messages.html' %}
 
 
 {% endblock content %}

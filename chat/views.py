@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 
 from .models import PrivateChatRoom, PrivateChatRoomMessage
+from friends.models import FriendList
 from .utils import get_or_create_private_chat
 from users.models import Account
 
@@ -28,10 +29,22 @@ def private_chat_view(request):
             "friend": friend,
         })
 
-    return render(request, 'chat/room.html', context={
+    context = {
         'm_and_f': m_and_f,
         'debug': settings.DEBUG,
-    })
+    }
+    if room_id := request.GET.get('room_id'):
+        try:
+            room = PrivateChatRoom.objects.get(id=room_id)
+            user_friend_list = FriendList.objects.get(user=request.user)
+            if request.user in [room.user1, room.user2] and \
+                any([user_friend_list.is_mutual_friends(x) for x in [room.user1, room.user2]]):
+
+                context['room'] = room
+        except PrivateChatRoom.DoesNotExist:
+            pass
+
+    return render(request, 'chat/room.html', context=context)
 
 def get_private_chat(request):
     user1 = request.user

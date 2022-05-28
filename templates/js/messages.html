@@ -70,4 +70,33 @@
 
       preLoadImage(image, image_id)
      }
+
+    function startPrivateChat(id) {
+        let payload = {
+          'csrfmiddlewaretoken': "{{ csrf_token }}",
+          'user_id': id,
+        }
+        $.ajax({
+          type: "POST",
+          dataType: 'json',
+          url: "{% url 'chat:get-private-chat' %}",
+          data: payload,
+          timeout: 5000,
+          success: function(data) {
+            if (data.response === "success") {
+              let room_id = data.room_id
+              redirectToPrivateChat(room_id)
+            } else if (data.response) {
+              alert(data.response)
+            }
+          },
+          error: function(data) {
+            alert("Something went wrong")
+          },
+        })
+    }
+
+    function redirectToPrivateChat(room_id) {
+      window.location.href = "{% url 'chat:private-chat-room' %}?room_id=" + room_id
+    }
 </script>

@@ -200,8 +200,14 @@
 
     // on load function
     (function () {
-      {% if m_and_f %}
-        onSelectFriend("{{ m_and_f.0.friend.id }}")
+      {% if room %}
+        let other_user_id = {% if room.user1 == request.user %}{{room.user2.id}}{% else %}{{room.user1.id}}{% endif %};
+        console.log("other_user_id", other_user_id)
+        onSelectFriend(other_user_id)
+      {% else %}
+        {% if m_and_f %}
+          onSelectFriend("{{ m_and_f.0.friend.id }}")
+        {% endif %}
       {% endif %}
 
       {% for x in m_and_f %}
@@ -275,6 +281,8 @@
 
     // called when user clicks friend block
     function onSelectFriend(user_id) {
+        clearHighlightedFriend()
+        highlightFriendUser(user_id)
         getPrivateChat(user_id)
     }
 
@@ -292,7 +300,7 @@
         $.ajax({
           type: "POST",
           dataType: "json",
-          url: "{% url 'get-private-chat' %}",
+          url: "{% url 'chat:get-private-chat' %}",
           data: payload,
           timeout: 5000,
           success: function(data) {
@@ -358,6 +366,18 @@
 
     function disableScrollListener() {
       document.getElementById("id_chat_log").removeEventListener('scroll', chatLogScrollListener)
+    }
+
+    function highlightFriendUser(userId) {
+      document.getElementById("id_friend_container_" + userId).style.background = "#f2f2f2"
+    }
+
+    function clearHighlightedFriend() {
+      {% for x in m_and_f %}
+        document.getElementById("id_friend_container_{{ x.friend.id }}").style.background = ""
+      {% endfor %}
+      document.getElementById('id_other_user_profile_image').src = "{% static 'images/dummy_image.png' %}"
+      document.getElementById('id_other_username').innerHTML = ""
     }
 
 </script>
