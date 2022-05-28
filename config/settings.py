@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'friends.apps.FriendsConfig',
     'public_chat.apps.PublicChatConfig',
     'chat.apps.ChatConfig',
+    'notifications.apps.NotificationsConfig',
 ]
 
 MIDDLEWARE = [
