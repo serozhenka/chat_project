@@ -20,3 +20,17 @@ def calculate_timestamp(timestamp):
     else:
         ts = datetime.strftime(timestamp, "%m/%d/%Y")
     return str(ts)
+
+
+# class LazyChatRoomMessageEncoder(Serializer):
+#     def get_dump_object(self, obj):
+#         dump_object = {
+#             'msg_type': MsgType.STANDARD,
+#             'msg_id': obj.id,
+#             'user_id': obj.user.id,
+#             'username': obj.username,
+#             'message': obj.content,
+#             'image': obj.user.image.url,
+#             'natural_timestamp': calculate_timestamp(obj.timestamp),
+#         }
+#         return dump_object

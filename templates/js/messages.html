@@ -9,14 +9,14 @@
         } else setPaginationExhausted()
     }
 
-    function getChatRoomMessages() {
+    function getChatRoomMessages(room_id, websocket) {
       let pageNumber = document.getElementById("id_page_number").innerHTML
       if (pageNumber !== "-1") {
         setPageNumber("-1") // query in progress
-        public_chat_websocket.send(
+        websocket.send(
           JSON.stringify({
             "command": "get_chat_room_messages",
-            "room_id": '{{ room_id }}',
+            "room_id": room_id,
             "page_number": pageNumber,
           })
         )
@@ -69,5 +69,5 @@
       maintainPosition === false ? chatLog.scrollTop = chatLog.scrollHeight : 1;
 
       preLoadImage(image, image_id)
-    }
+     }
 </script>

@@ -214,6 +214,9 @@
       if(chatSocket) {
         chatSocket.close()
         chatSocket = null
+        clearChatLog()
+        setPageNumber(1)
+        disableScrollListener()
       }
     }
 
@@ -241,10 +244,11 @@
           let data = JSON.parse(e.data)
           switch(data.msg_type) {
             case "get_user_info": handleUserInfoPayload(data.user_info); break
-            case "join": roomId = data.room_id; getUserInfo(); break;
+            case "join": roomId = data.room_id; getUserInfo(); getChatRoomMessages(roomId, chatSocket); enableScrollListener(); break;
             case "error": showClientErrorModal(data.message); break
             case "standard": appendChatMessage(data, false, true); break
-            case 4: break
+            case "message_load": handleMessagePayload(data.messages, data.new_page_number); break
+            case "progress_bar": displayLoadingSpinner(data.display); break
           }
       }
 
@@ -274,6 +278,9 @@
         getPrivateChat(user_id)
     }
 
+    function clearChatLog() {
+      document.getElementById("id_chat_log").innerHTML = ""
+    }
 
 
     function getPrivateChat(user_id) {
@@ -305,7 +312,8 @@
     }
 
     function showClientErrorModal(message) {
-        document.getElementById('id_trigger_client_error_modal').innerHTML = message
+      console.log(message)
+        document.getElementById('id_client_error_modal_body').innerHTML = message
         document.getElementById('id_trigger_client_error_modal').click()
     }
 
@@ -337,6 +345,20 @@
       }
     }
 
+    function chatLogScrollListener(e) {
+      let chatLog = document.getElementById("id_chat_log")
+      if (Math.abs(chatLog.scrollTop) + 50 >= (chatLog.scrollHeight - chatLog.offsetHeight)) {
+        getChatRoomMessages(roomId, chatSocket)
+      }
+    }
+
+    function enableScrollListener() {
+      document.getElementById("id_chat_log").addEventListener('scroll', chatLogScrollListener)
+    }
+
+    function disableScrollListener() {
+      document.getElementById("id_chat_log").removeEventListener('scroll', chatLogScrollListener)
+    }
 
 </script>
 
