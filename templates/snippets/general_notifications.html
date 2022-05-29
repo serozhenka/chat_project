@@ -119,9 +119,10 @@
         pos_action.href = "#"
         pos_action.innerHTML = "Accept"
         pos_action.addEventListener('click', function(e) {
-          e.preventDefault()
+          e.stopPropagation()
+          document.getElementById('id_notification_dropdown_toggle').click()
           sendAcceptFriendRequestToSocket(notification['notification_id'])
-        })
+         })
         pos_action.id = assignGeneralPosActionId(notification['notification_id'])
         div2.appendChild(pos_action)
 
@@ -130,10 +131,11 @@
         neg_action.href = "#"
         neg_action.innerHTML = "Decline"
         neg_action.addEventListener('click', function(e) {
-          e.preventDefault()
+          e.stopPropagation()
           sendDeclineFriendRequestToSocket(notification['notification_id'])
         })
         neg_action.id = assignGeneralNegActionId(notification['notification_id'])
+
         div2.appendChild(neg_action)
         card.appendChild(div2)
       } else {
@@ -148,6 +150,7 @@
         span.classList.add("align-items-start", "pt-1", "ms-auto")
         span.innerHTML = notification.message
         span.id = assignGeneralVerbId(notification)
+
         div1.appendChild(span)
         card.appendChild(div1)
       }
@@ -180,6 +183,19 @@
         })
       }
     }
+
+    function updateGeneralNotificationsDiv(notification) {
+      let notificationContainer = document.getElementById('id_general_notifications_container')
+      let divs = notificationContainer.childNodes
+      divs.forEach(function(element) {
+        if (element.id === ("id_notification_" + notification['notification_id'])) {
+          let updatedDiv = createFriendRequestElement(notification)
+          element.replaceWith(updatedDiv)
+          preLoadImage(notification.sender.image, `id_general_img_${notification['notification_id']}`)
+        }
+      })
+    }
+
 </script>
 
 <script type="text/javascript">
@@ -192,6 +208,16 @@
         }))
       }
     }
+
+    function sendAcceptFriendRequestToSocket(notification_id) {
+      console.log('called')
+      notificationSocket.send(JSON.stringify({
+        'command': 'accept_friend_request',
+        'notification_id': notification_id,
+      }))
+    }
+
+
 
 </script>
 

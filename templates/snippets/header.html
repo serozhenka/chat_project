@@ -101,6 +101,10 @@
           case "general":
             handleGeneralNotificationsData(data.notifications, data.new_page_number)
             break;
+          case "updated":
+            updateGeneralNotificationsDiv(data.notification);
+            {#document.getElementById('id_notification_dropdown_toggle').click()#}
+            break;
         }
     }
 
