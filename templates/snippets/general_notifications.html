@@ -132,6 +132,7 @@
         neg_action.innerHTML = "Decline"
         neg_action.addEventListener('click', function(e) {
           e.stopPropagation()
+          document.getElementById('id_notification_dropdown_toggle').click()
           sendDeclineFriendRequestToSocket(notification['notification_id'])
         })
         neg_action.id = assignGeneralNegActionId(notification['notification_id'])
@@ -210,14 +211,18 @@
     }
 
     function sendAcceptFriendRequestToSocket(notification_id) {
-      console.log('called')
       notificationSocket.send(JSON.stringify({
         'command': 'accept_friend_request',
         'notification_id': notification_id,
       }))
     }
 
-
+    function sendDeclineFriendRequestToSocket(notification_id) {
+      notificationSocket.send(JSON.stringify({
+        'command': 'decline_friend_request',
+        'notification_id': notification_id,
+      }))
+    }
 
 </script>
 
