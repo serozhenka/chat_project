@@ -18,6 +18,7 @@ DEFAULT_CHAT_NOTIFICATION_PAGE_SIZE = 5
 class NotificationType(str, Enum):
 	GENERAL_NOTIFICATION = "general"
 	UPDATED_NOTIFICATION = "updated"
+	PAGINATION_EXHAUSTED = "pagination_exhausted"
 
 class NotificationConsumer(AsyncJsonWebsocketConsumer):
 	"""
@@ -53,12 +54,12 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 		try:
 			if command == "general_notification":
 				payload = await self.get_general_notifications(self.scope['user'], content.get('new_page_number'))
-				print(payload)
-				if payload:
-					payload = json.loads(payload)
+				payload = json.loads(payload)
+				if len(payload) > 0:
 					await self.send_general_notification_payload(payload['notifications'], payload['new_page_number'])
 				else:
-					raise ClientError(204, "Something went wrong retrieving notifications")
+					await self.general_pagination_exhausted()
+					# raise ClientError(204, "Something went wrong retrieving notifications")
 			elif command == "accept_friend_request":
 				payload = await self.accept_friend_request(self.scope['user'], content.get("notification_id"))
 				if payload:
@@ -159,3 +160,8 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 
 			except Notification.DoesNotExist:
 				raise ClientError(422, "An error occurred, try to refresh the browser")
+
+	async def general_pagination_exhausted(self):
+		await self.send_json({
+			'notification_type': NotificationType.PAGINATION_EXHAUSTED,
+		})

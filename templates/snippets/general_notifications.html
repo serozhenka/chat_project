@@ -1,7 +1,7 @@
 {% load static %}
 
 
-<style type="text/css">
+<style>
 	.notification-thumbnail-image{
 		height: 50px;
 		width: 50px;
@@ -23,6 +23,8 @@
 	}
 </style>
 
+<p class="d-none" id="id_general_page_number">1</p>
+
 <script type="text/javascript">
 
     function setupGeneralNotificationMenu() {
@@ -39,7 +41,9 @@
 
     function clearNoGeneralNotificationCard() {
       let element = document.getElementById("id_no_general_notifications")
-      document.getElementById("id_general_notifications_container").removeChild(element)
+      if (element) {
+        document.getElementById("id_general_notifications_container").removeChild(element)
+      }
     }
 
     function createGeneralNotificationCard(cardId) {
@@ -182,6 +186,7 @@
         notifications.forEach(notification => {
           appendBottomGeneralNotification(notification)
         })
+        setGeneralPageNumber(new_page_number)
       }
     }
 
@@ -196,6 +201,27 @@
         }
       })
     }
+
+    function GeneralNotificationScrollListener() {
+      let notificationsContainer = document.getElementById('id_general_notifications_container')
+      notificationsContainer.addEventListener('scroll', function(e) {
+        if((notificationsContainer.scrollTop - 1) >= (notificationsContainer.scrollHeight - notificationsContainer.offsetHeight)) {
+          getNextGeneralNotificationPage()
+        }
+      })
+    }
+
+    GeneralNotificationScrollListener()
+
+    function setGeneralPageNumber(pageNumber) {
+        document.getElementById('id_general_page_number').innerHTML = pageNumber
+    }
+
+    function setGeneralPaginationExhausted() {
+      setGeneralPageNumber(-1)
+    }
+
+
 
 </script>
 
@@ -222,6 +248,16 @@
         'command': 'decline_friend_request',
         'notification_id': notification_id,
       }))
+    }
+
+    function getNextGeneralNotificationPage() {
+      let pageNumber = document.getElementById('id_general_page_number').innerHTML
+      if ("{{ request.user.is_authenticated }}" && Number(pageNumber) !== -1) {
+        notificationSocket.send(JSON.stringify({
+            "command": "general_notification",
+            "new_page_number": pageNumber,
+        }))
+      }
     }
 
 </script>
