@@ -408,3 +408,10 @@ body {
 
 /* end of public chat */
 
+.scrollable-menu {
+    height: auto;
+    max-height: 80vh;
+    width: 500px;
+    overflow-x: hidden;
+}
+

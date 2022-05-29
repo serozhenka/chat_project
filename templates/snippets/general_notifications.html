@@ -1,0 +1,236 @@
+{% load static %}
+
+
+<style type="text/css">
+	.notification-thumbnail-image{
+		height: 50px;
+		width: 50px;
+	}
+	.general-card:hover{
+		cursor: pointer;
+		background: #f2f2f2;
+	}
+	.general-card{
+		border-bottom: 1px solid var(--main-bg-color);
+	}
+	.timestamp-text{
+		color: var(--secondary-text-color);
+	}
+
+	#id_notifications_loading_spinner{
+		position: absolute;
+		margin-top: 40px;
+	}
+</style>
+
+<script type="text/javascript">
+
+    function setupGeneralNotificationMenu() {
+      let notificationContainer = document.getElementById("id_general_notifications_container")
+      let card = createGeneralNotificationCard('id_no_general_notifications')
+      let element = document.createElement('div')
+      element.classList.add("d-flex", "flex-row", "align-items-start")
+      element.innerHTML = `
+        <span class="ms-auto pt-1">You have no notifications</span>
+      `
+      card.appendChild(element)
+      notificationContainer.appendChild(card)
+    }
+
+    function clearNoGeneralNotificationCard() {
+      let element = document.getElementById("id_no_general_notifications")
+      document.getElementById("id_general_notifications_container").removeChild(element)
+    }
+
+    function createGeneralNotificationCard(cardId) {
+      let card = document.createElement('div')
+      cardId ? card.id = cardId : 1;
+      card.classList.add("d-flex", "flex-column", "align-items-start", "general-card", "p-4")
+      return card;
+    }
+
+    function createGeneralProfileImage(notification) {
+      let img = document.createElement("img")
+      img.classList.add("notification-thumbnail-image", "img-fluid", "rounded-circle", "me-2")
+      img.src = "{% static 'images/dummy_image.png' %}"
+      img.id = assignGeneralImgId(notification)
+      return img
+    }
+
+    function createGeneralTimestamp(notification) {
+      let timestamp = document.createElement("p")
+      timestamp.classList.add("small", "pt-2", "timestamp-text")
+      timestamp.innerHTML = notification['natural_timestamp']
+      timestamp.id = assignGeneralTimestampId(notification)
+      return timestamp
+    }
+
+    function createFriendListElement(notification) {
+      let card = createGeneralNotificationCard(assignGeneralCardId(notification))
+      card.addEventListener('click', function(e) {
+        generalRedirect(notification.actions.redirect_url)
+      })
+      let div1 = document.createElement("div")
+      div1.classList.add("d-flex", "flex-row", "align-items-start")
+      div1.id = assignGeneralDiv1Id(notification)
+
+      let img = createGeneralProfileImage(notification)
+      div1.appendChild(img)
+
+      let span = document.createElement("span")
+      span.classList.add("align-items-start", "pt-1", "ms-auto")
+      span.innerHTML = notification.message
+      span.id = assignGeneralVerbId(notification)
+      if (notification.message.length > 50) span.innerHTML = span.innerHTML.slice(0, 50) + "...";
+      div1.appendChild(span)
+      card.appendChild(div1)
+      card.appendChild(createGeneralTimestamp(notification))
+
+      return card
+    }
+
+    function createFriendRequestElement(notification) {
+      let card = createGeneralNotificationCard(assignGeneralCardId(notification))
+      card.addEventListener('click', function(e) {
+        generalRedirect(notification.actions.redirect_url)
+      })
+
+      if (notification.is_active) {
+        let div1 = document.createElement("div")
+        div1.classList.add("d-flex", "flex-row", "align-items-start")
+        div1.id = assignGeneralDiv1Id(notification)
+
+        let img = createGeneralProfileImage(notification)
+        div1.appendChild(img)
+
+        let span = document.createElement("span")
+        span.classList.add("align-items-start", "pt-1", "ms-auto")
+        span.innerHTML = notification.message
+        span.id = assignGeneralVerbId(notification)
+        div1.appendChild(span)
+        card.appendChild(div1)
+
+        let div2 = document.createElement("div")
+        div2.classList.add("d-flex", "flex-row", "align-items-start")
+        div2.id = assignGeneralDiv2Id(notification)
+
+        let pos_action = document.createElement("a")
+        pos_action.classList.add("btn", "btn-primary", "me-2", "mt-2")
+        pos_action.href = "#"
+        pos_action.innerHTML = "Accept"
+        pos_action.addEventListener('click', function(e) {
+          e.preventDefault()
+          sendAcceptFriendRequestToSocket(notification['notification_id'])
+        })
+        pos_action.id = assignGeneralPosActionId(notification['notification_id'])
+        div2.appendChild(pos_action)
+
+        let neg_action = document.createElement("a")
+        neg_action.classList.add("btn", "btn-danger", "mt-2")
+        neg_action.href = "#"
+        neg_action.innerHTML = "Decline"
+        neg_action.addEventListener('click', function(e) {
+          e.preventDefault()
+          sendDeclineFriendRequestToSocket(notification['notification_id'])
+        })
+        neg_action.id = assignGeneralNegActionId(notification['notification_id'])
+        div2.appendChild(neg_action)
+        card.appendChild(div2)
+      } else {
+        let div1 = document.createElement("div")
+        div1.classList.add("d-flex", "flex-row", "align-items-start")
+        div1.id = assignGeneralDiv1Id(notification)
+
+        let img = createGeneralProfileImage(notification)
+        div1.appendChild(img)
+
+        let span = document.createElement("span")
+        span.classList.add("align-items-start", "pt-1", "ms-auto")
+        span.innerHTML = notification.message
+        span.id = assignGeneralVerbId(notification)
+        div1.appendChild(span)
+        card.appendChild(div1)
+      }
+
+      card.appendChild(createGeneralTimestamp(notification))
+      return card;
+    }
+
+    function appendBottomGeneralNotification(notification) {
+      let notificationContainer = document.getElementById("id_general_notifications_container")
+      let card = null;
+      switch (notification.notification_type) {
+        case "FriendRequest":
+          card = createFriendRequestElement(notification)
+          notificationContainer.appendChild(card)
+          break;
+        case "FriendList":
+          card = createFriendListElement(notification)
+          notificationContainer.appendChild(card)
+          break;
+      }
+      preLoadImage(notification.sender.image, assignGeneralImgId(notification))
+    }
+
+    function handleGeneralNotificationsData(notifications, new_page_number) {
+      if (notifications) {
+        clearNoGeneralNotificationCard()
+        notifications.forEach(notification => {
+          appendBottomGeneralNotification(notification)
+        })
+      }
+    }
+</script>
+
+<script type="text/javascript">
+
+    function getFirstGeneralNotificationsPage() {
+      if ("{{ request.user.is_authenticated }}") {
+        notificationSocket.send(JSON.stringify({
+          'command': "general_notification",
+          "new_page_number": 1,
+        }))
+      }
+    }
+
+</script>
+
+<script type="text/javascript">
+
+	function generalRedirect(url){
+		window.location.href = url
+	}
+
+	function assignGeneralDiv1Id(notification){
+		return "id_general_div1_" + notification['notification_id']
+	}
+
+	function assignGeneralImgId(notification){
+		return "id_general_img_" + notification['notification_id']
+	}
+
+	function assignGeneralVerbId(notification){
+		return "id_general_verb_" + notification['notification_id']
+	}
+
+	function assignGeneralDiv2Id(notification){
+		return "id_general_div2_" + notification['notification_id']
+	}
+
+	function assignGeneralPosActionId(notification){
+		return "id_general_pos_action_" + notification['notification_id']
+	}
+
+	function assignGeneralNegActionId(notification){
+		return "id_general_neg_action_" + notification['notification_id']
+	}
+
+	function assignGeneralTimestampId(notification){
+		return "id_timestamp_" + notification['notification_id']
+	}
+
+	function assignGeneralCardId(notification){
+		return "id_notification_" + notification['notification_id']
+	}
+</script>
+

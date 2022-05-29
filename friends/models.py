@@ -1,7 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericRelation
@@ -15,19 +15,19 @@ class FriendList(models.Model):
 
     @property
     def get_cname(self):
-        return self.__class__.__name__
+        return "FriendList"
 
     def __str__(self):
         return self.user.username
 
     def add_friend(self, account):
-        if account in self.friends.all():
+        if account not in self.friends.all():
             self.friends.add(account)
 
             self.notifications.create(
                 target=self.user,
                 sender=account,
-                redirect_url=f"{settings.BASE_URL}/account/{account.id}",
+                redirect_url=f"{settings.BASE_URL}/accounts/{account.id}",
                 message=f"You are now friends with {account.username}",
                 content_type=ContentType.objects.get_for_model(self),
             )
@@ -57,7 +57,7 @@ class FriendList(models.Model):
         self.notifications.create(
             target=removee,
             sender=self.user,
-            redirect_url=f"{settings.BASE_URL}/account/{self.user.id}/",
+            redirect_url=f"{settings.BASE_URL}/accounts/{self.user.id}/",
             message=f"You are no longer friends with {self.user.username}",
             content_type=ContentType.objects.get_for_model(self),
         )
@@ -66,13 +66,10 @@ class FriendList(models.Model):
         self.notifications.create(
             target=self.user,
             sender=removee,
-            redirect_url=f"{settings.BASE_URL}/account/{removee.id}/",
+            redirect_url=f"{settings.BASE_URL}/accounts/{removee.id}/",
             message=f"You are no longer friends with {removee.username}",
             content_type=ContentType.objects.get_for_model(self),
         )
-
-
-
 
     def is_mutual_friends(self, friend):
         if friend in self.friends.all():
@@ -93,9 +90,13 @@ class FriendRequest(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     notifications = GenericRelation(Notification)
 
+    def __init__(self, *args, **kwargs):
+        super(FriendRequest, self).__init__(*args, **kwargs)
+        self.__original_is_active = self.is_active
+
     @property
     def get_cname(self):
-        return self.__class__.__name__
+        return "FriendRequest"
 
     def __str__(self):
         return f"{self.sender.username}-{self.receiver.username}"
@@ -112,12 +113,13 @@ class FriendRequest(models.Model):
         receiver_fl.add_friend(self.sender)
 
         # update receiver notification
-        receiver_notification = Notification.objects.get(
+        receiver_notification = Notification.objects.filter(
             target=self.receiver,
             content_type=content_type,
             object_id=self.id
-        )
-        receiver_notification.redirect_url = f"{settings.BASE_URL}/account/{self.sender.id}"
+        ).order_by('-timestamp').first()
+        print(receiver_notification)
+        receiver_notification.redirect_url = f"{settings.BASE_URL}/accounts/{self.sender.id}"
         receiver_notification.message = f"You accepted {self.sender.username}'s friend request"
         receiver_notification.timestamp = timezone.now()
         receiver_notification.save()
@@ -129,7 +131,7 @@ class FriendRequest(models.Model):
         self.notifications.create(
             target=self.sender,
             sender=self.receiver,
-            redirect_url=f"{settings.BASE_URL}/account/{self.receiver.id}/",
+            redirect_url=f"{settings.BASE_URL}/accounts/{self.receiver.id}/",
             message=f"{self.receiver.username} accepted your friend request",
             content_type=ContentType.objects.get_for_model(self),
         )
@@ -146,12 +148,12 @@ class FriendRequest(models.Model):
 
         # update receiver notification
         content_type = ContentType.objects.get_for_model(self)
-        receiver_notification = Notification.objects.get(
+        receiver_notification = Notification.objects.filter(
             target=self.receiver,
             content_type=content_type,
             object_id=self.id
-        )
-        receiver_notification.redirect_url = f"{settings.BASE_URL}/account/{self.sender.id}"
+        ).order_by('-timestamp').first()
+        receiver_notification.redirect_url = f"{settings.BASE_URL}/accounts/{self.sender.id}"
         receiver_notification.message = f"You declined {self.sender.username}'s friend request"
         receiver_notification.timestamp = timezone.now()
         receiver_notification.save()
@@ -160,7 +162,7 @@ class FriendRequest(models.Model):
         self.notifications.create(
             target=self.sender,
             sender=self.receiver,
-            redirect_url=f"{settings.BASE_URL}/account/{self.receiver.id}/",
+            redirect_url=f"{settings.BASE_URL}/accounts/{self.receiver.id}/",
             message=f"{self.receiver.username} declined your friend request",
             content_type=ContentType.objects.get_for_model(self),
         )
@@ -180,7 +182,7 @@ class FriendRequest(models.Model):
         self.notifications.create(
             target=self.sender,
             sender=self.receiver,
-            redirect_url=f"{settings.BASE_URL}/account/{self.receiver.id}/",
+            redirect_url=f"{settings.BASE_URL}/accounts/{self.receiver.id}/",
             message=f"You cancelled your friend request to {self.receiver.username}",
             content_type=ContentType.objects.get_for_model(self),
         )
@@ -190,11 +192,11 @@ class FriendRequest(models.Model):
 
 @receiver(post_save, sender=FriendRequest)
 def create_notification(sender, instance, created, **kwargs):
-    if created:
+    if created or (not created and instance.is_active):
         instance.notifications.create(
             target=instance.receiver,
             sender=instance.sender,
-            redirect_url=f"{settings.BASE_URL}/account/{instance.sender.id}",
+            redirect_url=f"{settings.BASE_URL}/accounts/{instance.sender.id}",
             message=f"{instance.sender.username} sent you a friend request",
             content_type=instance
         )

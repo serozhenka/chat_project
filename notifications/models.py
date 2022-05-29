@@ -27,3 +27,4 @@ class Notification(models.Model):
     def get_content_object_type(self):
         return self.content_object.get_cname
 
+

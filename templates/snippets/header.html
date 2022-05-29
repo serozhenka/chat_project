@@ -30,7 +30,7 @@
 							</div>
 
 							<div class="btn-group dropleft">
-								<div class="d-flex notifications-icon-container rounded-circle align-items-center me-3" id="id_notification_dropdown_toggle" data-toggle="dropdown" onclick="setGeneralNotificationsAsRead()">
+								<div class="d-flex notifications-icon-container rounded-circle align-items-center me-3" id="id_notification_dropdown_toggle" data-bs-toggle="dropdown" {# onclick="setGeneralNotificationsAsRead()" #}>
 									<span id="id_general_notifications_count" class="notify-badge"></span>
 									<span class="d-flex material-icons notifications-material-icon m-auto align-items-center"><i class="bi bi-bell-fill fs-4"></i></span>
                                     <div class="dropdown-menu scrollable-menu" aria-labelledby="id_notification_dropdown_toggle" id="id_general_notifications_container">
@@ -86,6 +86,43 @@
 	</div>
 
 </div>
+
+{% include 'snippets/general_notifications.html' %}
+
+<script type="text/javascript">
+    let ws_scheme2 = window.location.protocol === "https" ? "wss" : "ws"
+    let ws_path2 = ws_scheme2 + "://" + window.location.host + "/" // ":8001/" todo
+    let notificationSocket = new WebSocket(ws_path2)
+
+    notificationSocket.onmessage = function(e) {
+        let data = JSON.parse(e.data)
+
+        switch(data.notification_type) {
+          case "general":
+            handleGeneralNotificationsData(data.notifications, data.new_page_number)
+            break;
+        }
+    }
+
+    notificationSocket.onopen = function(e) {
+      console.log("notificationSocket opened")
+      setupGeneralNotificationMenu()
+      getFirstGeneralNotificationsPage()
+    }
+
+    notificationSocket.onclose = function(e) {
+      console.log("notificationSocket closed")
+    }
+
+    notificationSocket.error = function(e) {
+      console.log("notificationSocket closed by error")
+    }
+
+    switch(notificationSocket.readyState) {
+      case WebSocket.OPEN: console.log("Socket opening complete"); break;
+      case WebSocket.CONNECTING: console.log("Socket is connecting"); break;
+    }
+</script>
 
 <script type="text/javascript">
     setupChatDropdownHeader()

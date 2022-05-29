@@ -16,6 +16,7 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.security.websocket import AllowedHostsOriginValidator
 from public_chat.consumers import PublicChatConsumer
 from chat.consumers import PrivateChatConsumer
+from notifications.consumers import NotificationConsumer
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
@@ -24,6 +25,7 @@ application = ProtocolTypeRouter({
     "websocket": AllowedHostsOriginValidator(
         AuthMiddlewareStack(
             URLRouter([
+                path('', NotificationConsumer.as_asgi()),
                 path('public_chat/<str:room_id>/', PublicChatConsumer.as_asgi(), name='public-chat'),
                 path('chat/<str:room_id>/', PrivateChatConsumer.as_asgi(), name='private-chat'),
             ])
