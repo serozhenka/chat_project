@@ -30,7 +30,7 @@
 							</div>
 
 							<div class="btn-group dropleft">
-								<div class="d-flex notifications-icon-container rounded-circle align-items-center me-3" id="id_notification_dropdown_toggle" data-bs-toggle="dropdown" {# onclick="setGeneralNotificationsAsRead()" #}>
+								<div class="d-flex notifications-icon-container rounded-circle align-items-center me-3" id="id_notification_dropdown_toggle" data-bs-toggle="dropdown" onclick="setGeneralNotificationsAsRead()">
 									<span id="id_general_notifications_count" class="notify-badge"></span>
 									<span class="d-flex material-icons notifications-material-icon m-auto align-items-center"><i class="bi bi-bell-fill fs-4"></i></span>
                                     <div class="dropdown-menu scrollable-menu" aria-labelledby="id_notification_dropdown_toggle" id="id_general_notifications_container">
@@ -113,6 +113,9 @@
           case "new_general":
             handleNewGeneralNotificationsData(data.notifications)
             break;
+          case "general_count":
+            setUnreadGeneralNotificationsCount(data.count)
+            break;
         }
     }
 
@@ -120,6 +123,7 @@
       console.log("notificationSocket opened")
       setupGeneralNotificationMenu()
       getFirstGeneralNotificationsPage()
+      getUnreadGeneralNotificationsCount()
     }
 
     notificationSocket.onclose = function(e) {

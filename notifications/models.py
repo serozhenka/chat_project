@@ -15,7 +15,7 @@ class Notification(models.Model):
     # statement describing the notification
     message = models.CharField(max_length=255, null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
-    is_read = models.BooleanField(default=True)
+    is_read = models.BooleanField(default=False)
 
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()

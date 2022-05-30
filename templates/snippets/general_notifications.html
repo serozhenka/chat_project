@@ -390,10 +390,41 @@
         setGeneralNewestTimestamp(notification.timestamp)
       })
     }
+
+    function setUnreadGeneralNotificationsCount(count) {
+        let element = document.getElementById('id_general_notifications_count')
+        if (count > 0) {
+          element.style.background = "red";
+          element.style.display = "block";
+          element.innerHTML = count;
+        } else {
+          element.style.background = "transparent";
+          element.style.display = "none";
+          element.innerHTML = "";
+        }
+    }
+
 </script>
 
 {# Send to consumer #}
 <script type="text/javascript">
+
+  function setGeneralNotificationsAsRead() {
+    if("{{ request.user.is_authenticated }}") {
+      notificationSocket.send(JSON.stringify({
+        "command": "mark_notifications_as_read",
+      }))
+      getUnreadGeneralNotificationsCount()
+    }
+  }
+
+  function getUnreadGeneralNotificationsCount() {
+    if("{{ request.user.is_authenticated }}") {
+      notificationSocket.send(JSON.stringify({
+        "command": "get_unread_general_notifications_count",
+      }))
+    }
+  }
 
   function getNewGeneralNotifications() {
       let newestTimestamp = document.getElementById("id_general_newest_timestamp").innerHTML
@@ -409,6 +440,7 @@
       if ("{{ request.user.is_authenticated }}") {
         setInterval(refreshGeneralNotifications, GENERAL_NOTIFICATION_INTERVAL)
         setInterval(getNewGeneralNotifications, GENERAL_NOTIFICATION_INTERVAL)
+        setInterval(getUnreadGeneralNotificationsCount, GENERAL_NOTIFICATION_INTERVAL)
       }
     }
 
