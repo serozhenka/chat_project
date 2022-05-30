@@ -18,6 +18,7 @@ DEFAULT_CHAT_NOTIFICATION_PAGE_SIZE = 5
 
 class NotificationType(str, Enum):
 	GENERAL_NOTIFICATION = "general"
+	NEW_GENERAL_NOTIFICATION = "new_general"
 	UPDATED_NOTIFICATION = "updated"
 	PAGINATION_EXHAUSTED = "pagination_exhausted"
 	REFRESH_GENERAL_NOTIFICATIONS = "refresh_general"
@@ -85,6 +86,13 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 				if len(payload) > 0:
 					payload = json.loads(payload)
 					await self.send_refreshed_general_notifications(payload['notifications'])
+				else:
+					raise ClientError(204, "An error occurred, try to refresh the browser")
+			elif command == "get_new_general_notifications":
+				payload = await self.get_new_general_notifications(self.scope['user'], content.get('newest_timestamp'))
+				if len(payload) > 0:
+					payload = json.loads(payload)
+					await self.send_new_general_notifications_payload(payload['notifications'])
 				else:
 					raise ClientError(204, "An error occurred, try to refresh the browser")
 
@@ -203,5 +211,33 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 	async def send_refreshed_general_notifications(self, notifications):
 		await self.send_json({
 			'notification_type': 'refresh_general',
+			'notifications': notifications,
+		})
+
+	@database_sync_to_async
+	def get_new_general_notifications(self, user, newest_timestamp):
+		payload = {}
+		if user.is_authenticated:
+			newest_ts = datetime.strptime(newest_timestamp[0:newest_timestamp.find("+")], "%Y-%m-%d %H:%M:%S.%f")
+
+			friend_request_ct = ContentType.objects.get_for_model(FriendRequest)
+			friend_list_ct = ContentType.objects.get_for_model(FriendList)
+
+			notifications = Notification.objects.filter(
+				target=user,
+				content_type__in=[friend_request_ct, friend_list_ct],
+				timestamp__gt=newest_ts,
+			).order_by('-timestamp')
+
+			s = LazyNotificationEncoder()
+			payload['notifications'] = s.serialize(notifications)
+		else:
+			raise ClientError(204, "User must be authenticated to get notifications")
+
+		return json.dumps(payload)
+
+	async def send_new_general_notifications_payload(self, notifications):
+		await self.send_json({
+			'notification_type': 'new_general',
 			'notifications': notifications,
 		})
