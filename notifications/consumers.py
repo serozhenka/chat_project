@@ -1,5 +1,6 @@
 import json
 
+from datetime import datetime
 from enum import Enum
 from django.conf import settings
 from django.core.paginator import Paginator
@@ -19,6 +20,7 @@ class NotificationType(str, Enum):
 	GENERAL_NOTIFICATION = "general"
 	UPDATED_NOTIFICATION = "updated"
 	PAGINATION_EXHAUSTED = "pagination_exhausted"
+	REFRESH_GENERAL_NOTIFICATIONS = "refresh_general"
 
 class NotificationConsumer(AsyncJsonWebsocketConsumer):
 	"""
@@ -74,17 +76,26 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 					await self.send_updated_friend_request_notification(payload['notification'])
 				else:
 					raise ClientError(204, "An error occurred, try to refresh the browser")
+			elif command == "refresh_general_notifications":
+				payload = await self.refresh_general_notifications(
+					self.scope['user'],
+					content.get('oldest_timestamp'),
+					content.get('newest_timestamp'),
+				)
+				if len(payload) > 0:
+					payload = json.loads(payload)
+					await self.send_refreshed_general_notifications(payload['notifications'])
+				else:
+					raise ClientError(204, "An error occurred, try to refresh the browser")
 
 		except ClientError as e:
 			...
 
 	async def display_progress_bar(self, display):
 		print("NotificationConsumer: display_progress_bar: " + str(display))
-		await self.send_json(
-			{
-				"progress_bar": display,
-			},
-		)
+		await self.send_json({
+			"progress_bar": display,
+		})
 
 	async def send_general_notification_payload(self, notifications, new_page_number):
 		await self.send_json({
@@ -164,4 +175,33 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 	async def general_pagination_exhausted(self):
 		await self.send_json({
 			'notification_type': NotificationType.PAGINATION_EXHAUSTED,
+		})
+
+	@database_sync_to_async
+	def refresh_general_notifications(self, user, oldest_timestamp, newest_timestamp):
+		payload = {}
+		if user.is_authenticated:
+			oldest_ts = datetime.strptime(oldest_timestamp[0:oldest_timestamp.find("+")], "%Y-%m-%d %H:%M:%S.%f")
+			newest_ts = datetime.strptime(newest_timestamp[0:newest_timestamp.find("+")], "%Y-%m-%d %H:%M:%S.%f")
+
+			friend_request_ct = ContentType.objects.get_for_model(FriendRequest)
+			friend_list_ct = ContentType.objects.get_for_model(FriendList)
+
+			notifications = Notification.objects.filter(
+				target=user,
+				content_type__in=[friend_request_ct, friend_list_ct],
+				timestamp__gte=oldest_ts,
+				timestamp__lte=newest_ts,
+			).order_by('-timestamp')
+
+			s = LazyNotificationEncoder()
+			payload['notifications'] = s.serialize(notifications)
+		else:
+			raise ClientError(204, "User must be authenticated to get notifications")
+		return json.dumps(payload)
+
+	async def send_refreshed_general_notifications(self, notifications):
+		await self.send_json({
+			'notification_type': 'refresh_general',
+			'notifications': notifications,
 		})

@@ -107,6 +107,9 @@
           case "pagination_exhausted":
             setGeneralPaginationExhausted();
             break;
+          case "refresh_general":
+            refreshGeneralNotificationsData(data.notifications)
+            break;
         }
     }
 

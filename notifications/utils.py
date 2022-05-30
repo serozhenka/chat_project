@@ -11,6 +11,7 @@ class LazyNotificationEncoder(Serializer):
             'message': obj.message,
             'is_read': obj.is_read,
             'natural_timestamp': str(naturaltime(obj.timestamp)),
+            'timestamp': str(obj.timestamp),
             'actions': {
                 'redirect_url': str(obj.redirect_url),
             },
