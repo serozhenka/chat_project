@@ -66,8 +66,9 @@ class UnreadChatRoomMessages(models.Model):
 
     @property
     def get_cname(self):
-        return "UnreadChaRoomMessages"
+        return "UnreadChatRoomMessages"
 
+    @property
     def get_other_user(self):
         return self.room.user2 if self.room.user1 == self.user else self.room.user1
 

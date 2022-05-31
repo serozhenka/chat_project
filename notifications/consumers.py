@@ -8,13 +8,13 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.contrib.contenttypes.models import ContentType
 
+from chat.models import UnreadChatRoomMessages
 from friends.models import FriendRequest, FriendList
 from notifications.models import Notification
 from notifications.utils import LazyNotificationEncoder
-# from notifications.constants import *
 from chat.exceptions import ClientError
 
-DEFAULT_CHAT_NOTIFICATION_PAGE_SIZE = 5
+DEFAULT_NOTIFICATION_PAGE_SIZE = 5
 
 class NotificationType(str, Enum):
 	GENERAL_NOTIFICATION = "general"
@@ -23,6 +23,7 @@ class NotificationType(str, Enum):
 	PAGINATION_EXHAUSTED = "pagination_exhausted"
 	REFRESH_GENERAL_NOTIFICATIONS = "refresh_general"
 	UNREAD_GENERAL_COUNT = "general_count"
+	CHAT_NOTIFICATION = "chat"
 
 class NotificationConsumer(AsyncJsonWebsocketConsumer):
 	"""
@@ -105,6 +106,12 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 					raise ClientError(204, "An error occurred, try to refresh the browser")
 			elif command == "mark_notifications_as_read":
 				await self.mark_notifications_read(self.scope['user'])
+			elif command == "get_chat_notifications":
+				payload = await self.get_chat_notifications(self.scope['user'], content.get('page_number'))
+				print(payload)
+				if len(payload) > 0:
+					payload = json.loads(payload)
+					await self.send_chat_notifications(payload['notifications'], payload['new_page_number'])
 
 		except ClientError as e:
 			...
@@ -139,7 +146,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 				content_type__in=[friend_request_ct, friend_list_ct]
 			).order_by('-timestamp')
 
-			paginator = Paginator(notifications, DEFAULT_CHAT_NOTIFICATION_PAGE_SIZE)
+			paginator = Paginator(notifications, DEFAULT_NOTIFICATION_PAGE_SIZE)
 			payload = {}
 
 			if int(page_number) <= paginator.num_pages:
@@ -284,3 +291,32 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
 			for notification in notifications:
 				notification.is_read = True
 				notification.save()
+
+	@database_sync_to_async
+	def get_chat_notifications(self, user, page_number):
+		if user.is_authenticated:
+			chat_messages_ct = ContentType.objects.get_for_model(UnreadChatRoomMessages)
+			notifications = Notification.objects.filter(
+				target=user,
+				content_type=chat_messages_ct,
+			).order_by('-timestamp')
+
+			paginator = Paginator(notifications, DEFAULT_NOTIFICATION_PAGE_SIZE)
+			payload = {}
+			if int(page_number) <= paginator.num_pages:
+				s = LazyNotificationEncoder()
+				serialized_notifications = s.serialize(paginator.page(page_number).object_list)
+				new_page_number = int(page_number)
+				payload['notifications'] = serialized_notifications
+				payload['new_page_number'] = new_page_number
+		else:
+			raise ClientError(204, "User must be authenticated to get notifications")
+
+		return json.dumps(payload)
+
+	async def send_chat_notifications(self, notifications, new_page_number):
+		await self.send_json({
+			'notification_type': NotificationType.CHAT_NOTIFICATION,
+			'notifications': notifications,
+			'new_page_number': new_page_number,
+		})

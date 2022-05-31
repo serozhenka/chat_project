@@ -1,0 +1,194 @@
+{% load static %}
+
+<style>
+	.notification-thumbnail-image{
+		height: 50px;
+		width: 50px;
+	}
+	.chat-card:hover{
+		cursor: pointer;
+		background: #f2f2f2;
+	}
+	.chat-card{
+		border-bottom: 1px solid var(--main-bg-color);
+	}
+	.timestamp-text{
+		color: var(--secondary-text-color);
+	}
+	.notification-chatroom-msg{
+		color: var(--light-primary-text-color);
+	}
+	#id_notifications_loading_spinner{
+		position: absolute;
+		margin-top: 40px;
+	}
+	.chat-dropdown-header:hover{
+		cursor: pointer;
+		background: var(--main-bg-color);
+	}
+	.chat-dropdown-header{
+		color: var(--light-primary-text-color);
+	}
+</style>
+
+
+<script type="text/javascript">
+
+    function clearNoChatNotificationsCard() {
+        let element = document.getElementById("id_no_chat_notifications")
+        if (element) {
+          document.getElementById("id_chat_notifications_container").removeChild(element)
+        }
+    }
+
+    function setupChatNotificationsMenu() {
+      let notificationContainer = document.getElementById("id_chat_notifications_container")
+      {#notificationContainer.#}
+
+      let card = createChatNotificationsCard('id_no_chat_notifications')
+
+      let element = document.createElement('div')
+      element.classList.add("d-flex", "flex-row", "align-items-start")
+      element.innerHTML = `
+        <span class="ms-auto pt-1">You have no notifications</span>
+      `
+      card.appendChild(element)
+      notificationContainer.appendChild(card)
+    }
+
+    function createChatNotificationsCard(cardId) {
+        let card = document.createElement('div')
+        cardId ? card.id = cardId : 1;
+        card.classList.add("d-flex", "flex-column", "align-items-start", "general-card")
+        return card;
+    }
+
+    function createChatProfileImage(notification) {
+      let img = document.createElement("img")
+      img.classList.add("notification-thumbnail-image", "img-fluid", "rounded-circle", "me-2")
+      img.src = "{% static 'images/dummy_image.png' %}"
+      img.id = assignChatImgId(notification)
+      return img
+    }
+
+    function createChatTimestamp(notification) {
+      let timestamp = document.createElement("p")
+      timestamp.classList.add("small", "pt-2", "timestamp-text")
+      timestamp.innerHTML = notification['natural_timestamp']
+      timestamp.id = assignChatTimestampId(notification)
+      return timestamp
+    }
+
+    function createUnreadChatRoomMessagesElement(notification) {
+      let card = createChatNotificationsCard(assignChatCardId(notification))
+      card.addEventListener('click', function(e) {
+        chatRedirect(notification.actions.redirect_url)
+      })
+
+      let div1 = document.createElement("div")
+      div1.classList.add("d-flex", "flex-row", "align-items-start")
+      div1.id = assignChatDiv1Id(notification)
+
+      let img = createChatProfileImage(notification)
+      div1.appendChild(img)
+
+      let div2 = document.createElement("div")
+      div2.classList.add("d-flex", "flex-column")
+      div2.id = assignChatDiv2Id(notification)
+
+      let title = document.createElement("span")
+      title.classList.add("align-items-start")
+      title.innerHTML = notification.sender.title
+      title.id = assignChatTitleId(notification)
+      div2.appendChild(title)
+
+      let chatRoomMessage = document.createElement('span')
+      chatRoomMessage.id = assignChatroomMessageId(notification)
+      chatRoomMessage.classList.add("align-items-start", "pt-1", "small", "notification-chatroom-msg")
+      chatRoomMessage.innerHTML = notification.message
+      if (notification.message.length > 50) chatRoomMessage.innerHTML = chatRoomMessage.innerHTML.slice(0, 50) + "...";
+      div2.appendChild(chatRoomMessage)
+      div1.appendChild(div2)
+      card.appendChild(div1)
+      card.appendChild(createGeneralTimestamp(notification))
+
+      return card
+    }
+
+    function appendBottomChatNotification(notification) {
+      let chatNotificationContainer = document.getElementById('id_chat_notifications_container')
+      let card = createUnreadChatRoomMessagesElement(notification)
+      chatNotificationContainer.appendChild(card)
+      preLoadImage(notification.sender.image, assignChatImgId(notification))
+    }
+
+    function handleChatNotificationsData(notifications, new_page_number) {
+        if(notifications.length > 0) {
+          clearNoChatNotificationsCard()
+          notifications.forEach(function(notification) {
+            appendBottomChatNotification(notification)
+          })
+        }
+    }
+
+    function setupChatDropdownHeader() {
+      let link = document.getElementById("id_chat_notification_dropdown_toggle_link")
+      link.addEventListener('click', function(e) {
+        window.location.href = e.target.href
+      })
+    }
+
+</script>
+
+{# sending to the consumer #}
+<script type="text/javascript">
+
+    function getFirstChatNotificationsPage() {
+      if ("{{ request.user.is_authenticated }}") {
+        notificationSocket.send(JSON.stringify({
+          "command": "get_chat_notifications",
+          "page_number": 1
+        }))
+      }
+    }
+
+</script>
+
+<script type="text/javascript">
+	/**
+		Helpers for assigning ids to important elements.
+	**/
+
+    function chatRedirect(url){
+        window.location.href = url
+	}
+
+	function assignChatDiv1Id(notification){
+		return "id_chat_div1_" + notification['notification_id']
+	}
+
+	function assignChatImgId(notification){
+		return "id_chat_img_" + notification['notification_id']
+	}
+
+	function assignChatTitleId(notification){
+		return "id_chat_title_" + notification['notification_id']
+	}
+
+	function assignChatroomMessageId(notification){
+		return "id_chat_message_" + notification['notification_id']
+	}
+
+	function assignChatDiv2Id(notification){
+		return "id_chat_div2_" + notification['notification_id']
+	}
+
+	function assignChatTimestampId(notification){
+		return "id_timestamp_" + notification['notification_id']
+	}
+
+	function assignChatCardId(notification){
+		return "id_notification_" + notification['notification_id']
+	}
+
+</script>

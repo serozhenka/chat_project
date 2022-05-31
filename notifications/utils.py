@@ -23,4 +23,7 @@ class LazyNotificationEncoder(Serializer):
         if obj.get_content_object_type() == "FriendRequest":
             dump_object['is_active'] = obj.content_object.is_active
 
+        if obj.get_content_object_type() == "UnreadChatRoomMessages":
+            dump_object['sender']['title'] = obj.content_object.get_other_user.username
+
         return dump_object

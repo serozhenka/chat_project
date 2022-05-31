@@ -88,6 +88,7 @@
 </div>
 
 {% include 'snippets/general_notifications.html' %}
+{% include 'snippets/chat_notifications.html' %}
 
 <script type="text/javascript">
     let ws_scheme2 = window.location.protocol === "https" ? "wss" : "ws"
@@ -116,6 +117,9 @@
           case "general_count":
             setUnreadGeneralNotificationsCount(data.count)
             break;
+          case "chat":
+            handleChatNotificationsData(data.notifications, data.new_page_number)
+            break;
         }
     }
 
@@ -124,6 +128,9 @@
       setupGeneralNotificationMenu()
       getFirstGeneralNotificationsPage()
       getUnreadGeneralNotificationsCount()
+
+      setupChatNotificationsMenu()
+      getFirstChatNotificationsPage()
     }
 
     notificationSocket.onclose = function(e) {
@@ -141,7 +148,7 @@
 </script>
 
 <script type="text/javascript">
-    setupChatDropdownHeader()
+    {#setupChatDropdownHeader()#}
 
     function executeQuery() {
       let query = document.getElementById('id_q_small').value
@@ -153,12 +160,5 @@
       window.location.href = "{% url 'search' %}?q=" + query
 
       return false;
-    }
-
-    function setupChatDropdownHeader() {
-      let link = document.getElementById("id_chat_notification_dropdown_toggle_link")
-      link.addEventListener('click', function(e) {
-        window.location.href = e.target.href
-      })
     }
 </script>
