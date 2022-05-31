@@ -120,6 +120,9 @@
           case "chat":
             handleChatNotificationsData(data.notifications, data.new_page_number)
             break;
+          case "new_chat":
+            handleNewChatNotificationsData(data.notifications)
+            break;
         }
     }
 

@@ -31,8 +31,94 @@
 	}
 </style>
 
+<p class="d-none" id="id_chat_newest_timestamp"></p>
+<p class="d-none" id="id_chat_page_number">1</p>
+
+<script src="{% static 'collections/collections.min.js' %}"></script>
 
 <script type="text/javascript">
+
+    const CHAT_NOTIFICATION_INTERVAL = 4000
+    let chatCacheNotificationList = new List([])
+
+    function setChatPageNumber(page_number) {
+      document.getElementById('id_chat_page_number').innerHTML = page_number
+    }
+
+    function setPaginationExausted() {
+      setChatPageNumber(-1)
+    }
+
+    function submitNewChatNotificationToCache(notification) {
+      let result = chatCacheNotificationList.filter(function (n) {
+        return n['notification_id'] === notification.notification_id
+      })
+      if (result.length === 0) {
+        chatCacheNotificationList.push(notification)
+        appendTopChatNotification(notification)
+      } else {
+        refreshChatNotificationsList(notification)
+      }
+    }
+
+    function submitChatNotificationToCache(notification) {
+      let result = chatCacheNotificationList.filter(function(n) {
+        return n['notification_id'] === notification.notification_id
+      })
+      if (result.length === 0) {
+        chatCacheNotificationList.push(notification)
+        appendBottomChatNotification(notification)
+      } else {
+        refreshChatNotificationsList(notification)
+      }
+    }
+
+    function refreshChatNotificationsList(notification) {
+      let notificationContainer = document.getElementById("id_chat_notifications_container")
+      let divs = notificationContainer.childNodes
+      divs.forEach(function(card) {
+        if (card.id === assignChatCardId(notification)) {
+          refreshUnreadChatRoomMessagesCard(card, notification)
+        }
+      })
+    }
+
+    function refreshUnreadChatRoomMessagesCard(card, notification) {
+      card.childNodes.forEach(function(element) {
+
+        if (element.id === assignChatDiv1Id(notification)) {
+          element.childNodes.forEach(function(child) {
+
+            if (child.id === assignChatDiv2Id(notification)) {
+              child.childNodes.forEach(function(nextChild) {
+                if (nextChild.id === assignChatTitleId(notification)) {
+                  nextChild.innerHTML = notification.sender.title
+                }
+
+                if (nextChild.id === assignChatroomMessageId(notification)) {
+                  nextChild.innerHTML = notification.message
+                  if (notification.message.length > 50) nextChild.innerHTML = nextChild.innerHTML.slice(0, 50) + "...";
+                }
+              })
+            }
+          })
+        }
+
+        if (element.id === assignChatTimestampId(notification)) {
+          element.innerHTML = notification.natural_timestamp
+        }
+      })
+    }
+
+    function setChatNewestTimestamp(timestamp) {
+      let newestDateContainer = document.getElementById('id_chat_newest_timestamp')
+      let newestDate = newestDateContainer.innerHTML
+      if (Date.parse(timestamp) > Date.parse(newestDate)) {
+        newestDateContainer.innerHTML = timestamp
+      } else if (newestDate === "") {
+        newestDateContainer.innerHTML = timestamp
+      }
+    }
 
     function clearNoChatNotificationsCard() {
         let element = document.getElementById("id_no_chat_notifications")
@@ -122,11 +208,29 @@
       preLoadImage(notification.sender.image, assignChatImgId(notification))
     }
 
+    function appendTopChatNotification(notification) {
+      let chatNotificationContainer = document.getElementById('id_chat_notifications_container')
+      let card = createUnreadChatRoomMessagesElement(notification)
+      chatNotificationContainer.insertBefore(card, chatNotificationContainer.childNodes[1])
+      preLoadImage(notification.sender.image, assignChatImgId(notification))
+    }
+
     function handleChatNotificationsData(notifications, new_page_number) {
         if(notifications.length > 0) {
           clearNoChatNotificationsCard()
           notifications.forEach(function(notification) {
-            appendBottomChatNotification(notification)
+            submitChatNotificationToCache(notification)
+            setChatNewestTimestamp(notification.timestamp)
+          })
+        }
+    }
+
+    function handleNewChatNotificationsData(notifications, new_page_number) {
+        if(notifications.length > 0) {
+          clearNoChatNotificationsCard()
+          notifications.forEach(function(notification) {
+            submitNewChatNotificationToCache(notification)
+            {#setChatNewestTimestamp(notification.timestamp)#}
           })
         }
     }
@@ -143,15 +247,32 @@
 {# sending to the consumer #}
 <script type="text/javascript">
 
-    function getFirstChatNotificationsPage() {
-      if ("{{ request.user.is_authenticated }}") {
-        notificationSocket.send(JSON.stringify({
-          "command": "get_chat_notifications",
-          "page_number": 1
-        }))
-      }
+  function getNewChatNotifications() {
+    let newest_timestamp = document.getElementById('id_chat_newest_timestamp').innerHTML
+    if ("{{ request.user.is_authenticated }}") {
+      notificationSocket.send(JSON.stringify({
+        "command": "get_new_chat_notifications",
+        "newest_timestamp": newest_timestamp
+      }))
     }
+  }
 
+  function getFirstChatNotificationsPage() {
+    if ("{{ request.user.is_authenticated }}") {
+      notificationSocket.send(JSON.stringify({
+        "command": "get_chat_notifications",
+        "page_number": 1
+      }))
+    }
+  }
+
+  function startChatNotificationService() {
+    if ("{{ request.user.is_authenticated }}") {
+      setInterval(getNewChatNotifications, CHAT_NOTIFICATION_INTERVAL)
+    }
+  }
+
+  startChatNotificationService()
 </script>
 
 <script type="text/javascript">
@@ -190,5 +311,13 @@
 	function assignChatCardId(notification){
 		return "id_notification_" + notification['notification_id']
 	}
+
+    function setInitialTimestamp() {
+      let today = new Date()
+      let date = today.getFullYear() + "-01-01 01:00:00.000000"
+      document.getElementById('id_chat_newest_timestamp').innerHTML = date
+    }
+
+    setInitialTimestamp()
 
 </script>
