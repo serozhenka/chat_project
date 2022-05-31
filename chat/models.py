@@ -94,6 +94,7 @@ def increment_unread_chatroom_messages_count(sender, instance, **kwargs):
                 )
                 notification.message = instance.most_recent_message
                 notification.timestamp = timezone.now()
+                notification.is_read = False
                 notification.save()
             except Notification.DoesNotExist:
                 instance.notifications.create(
@@ -107,7 +108,9 @@ def increment_unread_chatroom_messages_count(sender, instance, **kwargs):
 @receiver(pre_save, sender=UnreadChatRoomMessages)
 def remove_unread_chatroom_messages_count(sender, instance, **kwargs):
     if instance.id:
-        previous = UnreadChatRoomMessages(id=instance.id)
+        previous = UnreadChatRoomMessages.objects.get(id=instance.id)
+        print("previous count", previous.count)
+        print("instance count", instance.count)
         if previous.count > instance.count:
             content_type = ContentType.objects.get_for_model(instance)
             try:
@@ -116,6 +119,8 @@ def remove_unread_chatroom_messages_count(sender, instance, **kwargs):
                     content_type=content_type,
                     object_id=instance.id,
                 )
+                print("not", notification)
                 notification.delete()
+                print("not", notification)
             except Notification.DoesNotExist:
                 pass

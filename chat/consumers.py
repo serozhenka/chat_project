@@ -303,6 +303,8 @@ class PrivateChatConsumer(AsyncJsonWebsocketConsumer):
         if user in connected_users:
             try:
                 unread_messages = UnreadChatRoomMessages.objects.get(user=user, room=room)
+                print("here is count", unread_messages.most_recent_message)
+                unread_messages.is_read = True
                 unread_messages.count = 0
                 unread_messages.save()
             except UnreadChatRoomMessages.DoesNotExist:

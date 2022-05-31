@@ -45,7 +45,7 @@
       document.getElementById('id_chat_page_number').innerHTML = page_number
     }
 
-    function setPaginationExausted() {
+    function setChatPaginationExhausted() {
       setChatPageNumber(-1)
     }
 
@@ -140,6 +140,8 @@
       `
       card.appendChild(element)
       notificationContainer.appendChild(card)
+
+      setUnreadGeneralNotificationsCount(0)
     }
 
     function createChatNotificationsCard(cardId) {
@@ -211,7 +213,7 @@
     function appendTopChatNotification(notification) {
       let chatNotificationContainer = document.getElementById('id_chat_notifications_container')
       let card = createUnreadChatRoomMessagesElement(notification)
-      chatNotificationContainer.insertBefore(card, chatNotificationContainer.childNodes[1])
+      chatNotificationContainer.insertBefore(card, chatNotificationContainer.childNodes[2])
       preLoadImage(notification.sender.image, assignChatImgId(notification))
     }
 
@@ -222,6 +224,7 @@
             submitChatNotificationToCache(notification)
             setChatNewestTimestamp(notification.timestamp)
           })
+          setChatPageNumber(new_page_number)
         }
     }
 
@@ -242,10 +245,53 @@
       })
     }
 
+    function setOnChatNotificationScrollListener() {
+      let notificationsContainer = document.getElementById('id_chat_notifications_container')
+      notificationsContainer.addEventListener('scroll', function(e) {
+        if((notificationsContainer.scrollTop - 1) >= (notificationsContainer.scrollHeight - notificationsContainer.offsetHeight)) {
+          getNextChatNotificationPage()
+        }
+      })
+    }
+
+    setOnChatNotificationScrollListener()
+
+    function setUnreadGeneralNotificationsCount(count) {
+        let element = document.getElementById('id_chat_notifications_count')
+        if (count > 0) {
+          if (element.style.background !== "red") element.style.background = "red";
+          if (element.style.display !== "block") element.style.display = "block";
+          element.innerHTML = count;
+        } else {
+          element.style.background = "transparent";
+          element.style.display = "none";
+          element.innerHTML = "";
+        }
+    }
+
 </script>
 
 {# sending to the consumer #}
 <script type="text/javascript">
+
+  function getUnreadChatNotificationsCount() {
+    if ("{{ request.user.is_authenticated }}") {
+      notificationSocket.send(JSON.stringify({
+        'command': 'get_unread_chat_notifications_count',
+      }))
+    }
+  }
+
+  function getNextChatNotificationPage() {
+    let page_number = document.getElementById('id_chat_page_number')
+    if ("{{ request.user.is_authenticated }}" && Number(page_number) !== -1) {
+      notificationSocket.send(JSON.stringify({
+        'command': 'get_chat_notifications',
+        'page_number': page_number,
+      }))
+      getUnreadChatNotificationsCount()
+    }
+  }
 
   function getNewChatNotifications() {
     let newest_timestamp = document.getElementById('id_chat_newest_timestamp').innerHTML
@@ -269,6 +315,7 @@
   function startChatNotificationService() {
     if ("{{ request.user.is_authenticated }}") {
       setInterval(getNewChatNotifications, CHAT_NOTIFICATION_INTERVAL)
+      setInterval(getUnreadChatNotificationsCount, CHAT_NOTIFICATION_INTERVAL)
     }
   }
 
