@@ -1,4 +1,6 @@
 import json
+import asyncio
+
 from enum import Enum
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
@@ -6,11 +8,12 @@ from django.core.serializers.python import Serializer
 from django.core.paginator import Paginator
 from django.utils import timezone
 
-from .models import PrivateChatRoom, PrivateChatRoomMessage
+from .models import PrivateChatRoom, PrivateChatRoomMessage, UnreadChatRoomMessages
 from friends.models import FriendList
 from users.utils import LazyAccountEncoder
 from .exceptions import ClientError
 from chat.utils import calculate_timestamp
+from users.models import Account
 
 class MsgType(str, Enum):
     STANDARD = "standard"  # standard messages
@@ -56,6 +59,12 @@ class PrivateChatConsumer(AsyncJsonWebsocketConsumer):
                         room=room,
                         message=content['message']
                     )
+
+                    connected_users = room.connected_users.all()
+                    await asyncio.gather(*[
+                        self.append_unread_message(room, room.user1, connected_users, message),
+                        self.append_unread_message(room, room.user2, connected_users, message)
+                    ])
 
                     await self.channel_layer.group_send(
                         room.group_name,
@@ -114,6 +123,9 @@ class PrivateChatConsumer(AsyncJsonWebsocketConsumer):
         except ClientError as e:
             return await self.handle_client_error(e)
 
+        await self.connect_user(room, self.scope['user'])
+        await self.on_user_connected(room, self.scope['user'])
+
         await self.channel_layer.group_add(
             room.group_name,
             self.channel_name
@@ -130,6 +142,7 @@ class PrivateChatConsumer(AsyncJsonWebsocketConsumer):
         """
         room = await self.get_room_or_error(self.scope['user'], room_id)
         self.room_id = None
+        await self.disconnect_user(room, self.scope['user'])
 
         await self.channel_layer.group_discard(
             room.group_name,
@@ -260,6 +273,44 @@ class PrivateChatConsumer(AsyncJsonWebsocketConsumer):
             return json.dumps(payload)
         except Exception as e:
             return None
+
+    @database_sync_to_async
+    def connect_user(self, room, user):
+        room.connect_user(user)
+
+    @database_sync_to_async
+    def disconnect_user(self, room, user):
+        room.disconnect_user(user)
+
+    @database_sync_to_async
+    def append_unread_message(self, room, user, connected_users, message):
+        if user not in connected_users:
+            try:
+                unread_messages = UnreadChatRoomMessages.objects.get(room=room, user=user)
+                unread_messages.most_recent_message = message.content
+                unread_messages.count += 1
+                unread_messages.save()
+            except UnreadChatRoomMessages.DoesNotExist:
+                UnreadChatRoomMessages.objects.create(
+                    room=room,
+                    user=user,
+                    count=1,
+                )
+
+    @database_sync_to_async
+    def on_user_connected(self, room, user):
+        connected_users = room.connected_users.all()
+        if user in connected_users:
+            try:
+                unread_messages = UnreadChatRoomMessages.objects.get(user=user, room=room)
+                unread_messages.count = 0
+                unread_messages.save()
+            except UnreadChatRoomMessages.DoesNotExist:
+                UnreadChatRoomMessages.objects.create(
+                    room=room,
+                    user=user
+                )
+
 
 class LazyChatRoomMessageEncoder(Serializer):
     def get_dump_object(self, obj):

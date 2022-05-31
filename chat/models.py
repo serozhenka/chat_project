@@ -11,6 +11,7 @@ from notifications.models import Notification
 class PrivateChatRoom(models.Model):
     user1 = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='user1')
     user2 = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='user2')
+    connected_users = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='connected_users')
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -19,6 +20,14 @@ class PrivateChatRoom(models.Model):
     @property
     def group_name(self):
         return f"private_chat_room_{self.id}"
+
+    def connect_user(self, user):
+        if user not in self.connected_users.all():
+            self.connected_users.add(user)
+
+    def disconnect_user(self, user):
+        if user in self.connected_users.all():
+            self.connected_users.remove(user)
 
 
 class PrivateChatRoomMessageManager(models.Manager):
