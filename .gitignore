@@ -139,5 +139,6 @@ dmypy.json
 # static
 staticfiles/
 mediafiles/
+media/
 
 # End of https://www.gitignore.io/api/python

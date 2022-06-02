@@ -92,7 +92,7 @@
 
 <script type="text/javascript">
     let ws_scheme2 = window.location.protocol === "https" ? "wss" : "ws"
-    let ws_path2 = ws_scheme2 + "://" + window.location.host + "/" // ":8001/" todo
+    let ws_path2 = ws_scheme2 + "://" + window.location.host + ":8001/"
     let notificationSocket = new WebSocket(ws_path2)
 
     notificationSocket.onmessage = function(e) {
